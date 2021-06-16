@@ -7,8 +7,9 @@ import gensim
 import gensim.downloader as api
 from metaphor.models.common.tokenize import Tokenizer, BertTokenizer
 from transformers import BertTokenizer, BertModel
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-# Sentence - Glove/Bert -> Tensor of embeddings -CNN/RNN/MeanPool> Single vector
+# Sentence - Glove/Bert -> Tensor of embeddings - CNN/RNN/MeanPool -> Single vector
 # e.g. nn.Sequential([Bert(), RNN()]) or nn.Sequential([WordEmbedding(Glove)])
 
 
@@ -65,42 +66,19 @@ class Glove(nn.Module):
         return self._embed(x)
 
 
-class WordEmbedding(nn.Module):
-    def __init__(self, weights: torch.Tensor, pooler: Pooler):
-        super().__init__()
-        self.pooler = pooler
-        self.padding_token = self.dictionary.token2id["<PAD>"]
-
-        # get pretrained word embeddings
-        self.embed = nn.Embedding.from_pretrained(torch.FloatTensor(weights))
-
-    def forward(self, x: torch.FloatTensor):
-        return self.pooler(self.embed(x))
-
-
 class RNN(nn.Module):
-    def __init__(self, embedding_type, pooling_strat, dictionary, rnn_hid_dim):
+    def __init__(self, tokenizer: Tokenizer, hidden_dim: int, embedding_size: int):
         super().__init__()
-        self.pooling_strat = pooling_strat
-        self.dictionary = dictionary
-        self.embedding_type = embedding_type
-        self.rnn_hid_dim = rnn_hid_dim // 2  # assuming bidirectional
-        self.padding_token = self.dictionary["PAD"]
+        self.tokenizer = tokenizer
+        # self.dictionary = dictionary
+        self.hidden_dim = hidden_dim // 2  # assuming bidirectional
+        # self.padding_token = self.dictionary["PAD"]
 
-        # word embedding
-        if embedding_type == "rand":
-            self.embed = nn.Embedding(len(self.dictionary), rnn_hid_dim)
-            self.text_emb_size = rnn_hid_dim
-        else:
-            embedding_weights = get_embedding_weights(dictionary, embedding_type)
-            self.text_emb_size = embedding_weights.shape[-1]
-            self.embed = nn.Embedding.from_pretrained(
-                torch.FloatTensor(embedding_weights)
-            )
+        # self.text_emb_size = embedding_weights.shape[-1]
 
         # RNN
-        self.rnn = nn.LSTM(
-            input_size=self.text_emb_size,
+        self.rnn = nn.LSTM( 
+            input_size=embedding_size,
             hidden_size=self.rnn_hid_dim,
             num_layers=1,
             bidirectional=True,
@@ -109,24 +87,28 @@ class RNN(nn.Module):
 
     def forward(self, x):
         """Params:
-        - x (torch.LongTensor): tokenised sequence (b x N*K x max_seq_len)
+        - x (torch.LongTensor): tensor of embeddings shape (B x max_sequence_length x emb_dim)
         Returns:
-        - text_embedding (torch.FloatTensor): embedded sequence (b x N*K x emb_dim)
+        - text_embedding (torch.FloatTensor): embedded sequence (B x emb_dim)
         """
         # process data
-        B, NK, max_seq_len = x.shape
+        B, max_seq_len, embedding_dim = x.shape
         # flatten batch
-        x_flat = x.view(-1, max_seq_len)  # (B*N*K x max_seq_len)
+        x_flat = x.view(-1, max_seq_len)  # (B*emb_dim x max_seq_len)
+        
         # padding_masks
-        padding_mask = torch.where(x_flat != self.padding_token, 1, 0)
-        seq_lens = torch.sum(padding_mask, dim=-1).cpu()  # (B*N*K)
+        # padding_mask = torch.where(x_flat != self.padding_token, 1, 0)
+        # seq_lens = torch.sum(padding_mask, dim=-1).cpu()  # (B*N*K)
 
         # embed
-        text_embedding = self.embed(x_flat)  # (B*N*K x max_seq_len x emb_dim)
+        # text_embedding = self.embed(x_flat)  # (B*N*K x max_seq_len x emb_dim)
 
         # feed through RNN
         text_embedding_packed = pack_padded_sequence(
-            text_embedding, seq_lens, batch_first=True, enforce_sorted=False
+            text_embedding,
+            self.tokenizer.sentence_lengths,
+            batch_first=True,
+            enforce_sorted=False,
         )
         rnn_out_packed, _ = self.rnn(text_embedding_packed)
         rnn_out, _ = pad_packed_sequence(
@@ -134,7 +116,7 @@ class RNN(nn.Module):
         )  # (B*N*K, max_seq_len, rnn_hid_dim*2)
 
         # concat forward and backward results (takes output states)
-        seq_len_indices = [length - 1 for length in seq_lens]
+        seq_len_indices = [length - 1 for length in self.tokenizer.sentence_lengths]
         batch_indices = [i for i in range(B * NK)]
         rnn_out_forward = rnn_out[
             batch_indices, seq_len_indices, : self.rnn_hid_dim
@@ -149,5 +131,24 @@ class RNN(nn.Module):
         return seq_embed.view(B, NK, -1)  # (B, N*K, rnn_hid_dim*2)
 
 
-class WordCNN(nn.Module):
-    pass
+class CNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class MLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+
+class MisinformationModel(nn.Module):
+    def __init__(self, embedding: nn.Module, classifier: nn.Module):
+        super().__init__()
+        self.model = nn.Sequential(embedding, classifier)
+        self._embed = embedding
+
+    def forward(self, x: torch.Tensor):
+        return self.model(x)
+
+    def evaluate(self, x: str, tokenizer: Tokenizer):
+        return self.model(self._embed(tokenizer
