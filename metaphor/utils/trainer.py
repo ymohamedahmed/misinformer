@@ -4,8 +4,9 @@ from torch.utils.data import DataLoader
 
 
 class Trainer:
-    def __init__(self):
+    def __init__(self, lr: float, patience: int):
         pass
 
-    def fit(self, train: DataLoader, validation: DataLoader, model: nn.Module):
+    def fit(self, model: nn.Module, train: DataLoader, validation: DataLoader):
         pass
+    

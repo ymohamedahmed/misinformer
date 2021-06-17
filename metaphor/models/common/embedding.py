@@ -1,5 +1,5 @@
 from metaphor.models.common.pooling import Pooler
-from typing import Dict
+from typing import Dict, List
 import torch
 import torch.nn as nn
 import numpy as np
@@ -63,6 +63,7 @@ class Glove(nn.Module):
         self._embed = nn.Embedding.from_pretrained(torch.FloatTensor(weights))
 
     def forward(self, x: torch.Tensor):
+        # x is the tokens representing the sentence
         return self._embed(x)
 
 
@@ -77,7 +78,7 @@ class RNN(nn.Module):
         # self.text_emb_size = embedding_weights.shape[-1]
 
         # RNN
-        self.rnn = nn.LSTM( 
+        self.rnn = nn.LSTM(
             input_size=embedding_size,
             hidden_size=self.rnn_hid_dim,
             num_layers=1,
@@ -95,7 +96,7 @@ class RNN(nn.Module):
         B, max_seq_len, embedding_dim = x.shape
         # flatten batch
         x_flat = x.view(-1, max_seq_len)  # (B*emb_dim x max_seq_len)
-        
+
         # padding_masks
         # padding_mask = torch.where(x_flat != self.padding_token, 1, 0)
         # seq_lens = torch.sum(padding_mask, dim=-1).cpu()  # (B*N*K)
@@ -137,18 +138,18 @@ class CNN(nn.Module):
 
 
 class MLP(nn.Module):
-    def __init__(self):
+    def __init__(self, layers: List[int]):
         super().__init__()
 
 
-class MisinformationModel(nn.Module):
-    def __init__(self, embedding: nn.Module, classifier: nn.Module):
-        super().__init__()
-        self.model = nn.Sequential(embedding, classifier)
-        self._embed = embedding
+# class MisinformationModel(nn.Module):
+#     def __init__(self, embedding: nn.Module, classifier: nn.Module):
+#         super().__init__()
+#         self.model = nn.Sequential(embedding, classifier)
+#         self._embed = embedding
 
-    def forward(self, x: torch.Tensor):
-        return self.model(x)
+#     def forward(self, x: torch.Tensor):
+#         return self.model(x)
 
-    def evaluate(self, x: str, tokenizer: Tokenizer):
-        return self.model(self._embed(tokenizer
+# def evaluate(self, x: torch.Tensor):
+#     return self.model(x)
