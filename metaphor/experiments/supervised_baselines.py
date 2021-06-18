@@ -7,7 +7,7 @@ from metaphor.models.common import (
     Glove,
     MLP,
     MeanPooler,
-    BertTokenizer,
+    CustomBertTokenizer,
     Tokenizer,
 )
 from metaphor.utils.trainer import ClassifierTrainer
@@ -16,7 +16,7 @@ import os
 import torch
 
 # run all combinations of models
-tokenizers = [BertTokenizer, Tokenizer]
+tokenizers = [CustomBertTokenizer, Tokenizer]
 embedding = [Bert, Glove]
 models = [MeanPooler, RNN, CNN]
 layers = [25, 5, 3]
