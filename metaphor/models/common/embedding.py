@@ -31,7 +31,7 @@ class Bert(nn.Module):
 
     def forward(self, x: torch.IntTensor):
         x = x.to(self.device)
-        embeddings = torch.zeros(x.shape[0], x.shape[1], self.model.config.size)
+        embeddings = torch.zeros(x.shape[0], x.shape[1], self.model.config.hidden_size)
         for start in range(0, x.shape[0], self.batch_size):
             with torch.no_grad():
                 end = min(x.shape[0], start + self.batch_size)
