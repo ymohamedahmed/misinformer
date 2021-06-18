@@ -28,7 +28,7 @@ class Pheme:
         print(data["text"].values)
         N = len(data["text"].values)
         tokenized_sentences = tokenizer([x for x in data["text"].values])
-        embedder = embedder(tokenized_sentences)
+        # embedder = embedder(tokenized_sentences)
         indxs = np.arange(N)
         indxs = np.random.permutation(indxs)
         l_split, r_split = int(train_size * N), int((train_size + val_size) * N)
