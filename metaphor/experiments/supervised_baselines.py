@@ -7,15 +7,16 @@ from metaphor.models.common import (
     Glove,
     MLP,
     MeanPooler,
-    CustomBertTokenizer,
+    BertTokenizer,
     Tokenizer,
 )
 from metaphor.utils.trainer import ClassifierTrainer
 from metaphor.data.loading.data_loader import Pheme
 import os
+import torch
 
 # run all combinations of models
-tokenizers = [CustomBertTokenizer, Tokenizer]
+tokenizers = [BertTokenizer, Tokenizer]
 embedding = [Bert, Glove]
 models = [MeanPooler, RNN, CNN]
 layers = [25, 5, 3]
@@ -24,7 +25,7 @@ trainer_args = {
     "patience": 10,
     "weight_decay": 0.01,
     "num_epochs": 200,
-    "device": "cpu",
+    "device": torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
     "loss": nn.CrossEntropyLoss,
 }
 print(Path(__file__).absolute())
@@ -45,5 +46,5 @@ for i in range(2):
     }
     for j in range(3):
         classifier = nn.Sequential(models[j](), MLP(layers))
-        trainer = Trainer(**trainer_args)
+        trainer = ClassifierTrainer(**trainer_args)
         trainer.fit(classifier, data.train, data.val)
