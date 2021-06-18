@@ -37,7 +37,7 @@ class Bert(nn.Module):
                 end = min(x.shape[0], start + self.batch_size)
                 embeddings[start:end] = self.model(
                     input_ids=x[start:end],
-                    attention_mask=self.tokenizer.mas[start:end],
+                    attention_mask=self.tokenizer.mask[start:end],
                     output_attentions=False,
                 ).last_hidden_state
         return embeddings
