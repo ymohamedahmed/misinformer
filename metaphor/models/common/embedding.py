@@ -14,16 +14,43 @@ from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
 class Bert(nn.Module):
-    def __init__(self, tokenizer: CustomBertTokenizer):
+    def __init__(
+        self,
+        tokenizer: CustomBertTokenizer,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+        batch_size: int = 128,
+    ):
         super().__init__()
         self.model = transformers.BertModel.from_pretrained("bert-base-uncased")
+        self.model.to(device)
+        self.device = device
+        self.tokenizer = tokenizer
+        self.batch_size = batch_size
 
-    def forward(self, x: torch.FloatTensor):
-        return self.model(x)
+    def forward(self, x: torch.IntTensor):
+        x = x.to(self.device)
+        embeddings = torch.zeros(x.shape[0], x.shape[1], self.model.config.size)
+        for start in range(0, x.shape[0], self.batch_size):
+            with torch.no_grad():
+                end = min(x.shape[0], start + self.batch_size)
+                embeddings[start:end] = self.model(
+                    input_ids=x[start:end],
+                    attention_mask=self.tokenizer.mas[start:end],
+                    output_attentions=False,
+                ).last_hidden_state
+        return embeddings
 
 
 class Glove(nn.Module):
-    def __init__(self, tokenizer: StandardTokenizer):
+    def __init__(
+        self,
+        tokenizer: StandardTokenizer,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+    ):
         super().__init__()
         print("Downloading glove gigaword")
         word_model = api.load("glove-wiki-gigaword-300")
