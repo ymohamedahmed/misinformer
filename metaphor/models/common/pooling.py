@@ -1,10 +1,10 @@
 import torch
-from metaphor.models.common.tokenize import Tokenizer
+from metaphor.models.common.tokenize import StandardTokenizer
 import torch.nn as nn
 
 
 class MeanPooler(nn.Module):
-    def __init__(self, tokenizer: Tokenizer):
+    def __init__(self, tokenizer: StandardTokenizer):
         super().__init__()
         self.tokenizer = tokenizer
 

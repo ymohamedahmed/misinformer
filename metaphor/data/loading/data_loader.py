@@ -1,8 +1,9 @@
 import os
 import numpy as np
 import pandas as pd
-from metaphor.models.common.tokenize import Tokenizer
+from metaphor.models.common.tokenize import StandardTokenizer
 import torch
+import torch.nn as nn
 from typing import Tuple, List
 import re
 
@@ -11,7 +12,7 @@ class Pheme:
     def __init__(
         self,
         file_path: str,
-        tokenizer: Tokenizer,
+        tokenizer: StandardTokenizer,
         embedder: nn.Module,
         seed: int = 0,
         train_size: float = 0.6,
@@ -24,9 +25,10 @@ class Pheme:
         data = self._filter_dataset(pd.read_csv(file_path))
         data["text"] = self._preprocess_text(data["text"])
         data["veracity"] = self._process_labels(data["veracity"])
-        N = len(data["text"])
-        tokenized_sentences = tokenizer(data["text"])
-        embedder = embedder(tokenizer)
+        print(data["text"].values)
+        N = len(data["text"].values)
+        tokenized_sentences = tokenizer([x for x in data["text"].values])
+        embedder = embedder(tokenized_sentences)
         indxs = np.arange(N)
         indxs = np.random.permutation(indxs)
         l_split, r_split = int(train_size * N), int((train_size + val_size) * N)
@@ -51,7 +53,8 @@ class Pheme:
 
     def _filter_dataset(self, data: pd.DataFrame) -> pd.DataFrame:
         # remove unwanted datapoints
-        return data.loc[[x is not None for x in data["veracity"]]]
+        return data.dropna()
+        # return data.loc[[x is not None for x in data["veracity"]]]
 
     def _preprocess_text(self, tweets: List[str]) -> List[str]:
         # preprocess tweet data: remove URLs from tweets

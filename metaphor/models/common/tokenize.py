@@ -3,6 +3,7 @@ from gensim import corpora
 from gensim.utils import tokenize
 import numpy as np
 from itertools import chain
+import transformers
 import torch
 
 
@@ -10,9 +11,13 @@ class PreTokenizationError(Exception):
     pass
 
 
-class BertTokenizer:
+class Tokenizer:
+    pass
+
+
+class CustomBertTokenizer(Tokenizer):
     def __init__(self):
-        self.tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
+        self.tokenizer = transformers.BertTokenizer.from_pretrained("bert-base-uncased")
 
     def __call__(self, sentences: List[str]) -> torch.Tensor:
         tokens = self.tokenizer(
@@ -22,11 +27,15 @@ class BertTokenizer:
             padding=True,
             truncation=True,
         )
+        self.mask = tokens["attention_mask"]
         return tokens["input_ids"]
-        # self.mask = tokens["attention_mask"]
+
+    @property
+    def max_length(self) -> int:
+        return self.mask.shape[1]
 
 
-class Tokenizer:
+class StandardTokenizer(Tokenizer):
     def __init__(self):
         self._dictionary = None
         self._sentence_lengths = None
@@ -62,10 +71,15 @@ class Tokenizer:
         self._check_tokenizer_called()
         return self._mask
 
+    @property
+    def max_length(self) -> int:
+        return self._max_length
+
     def _padding(self, sentences: List[str], lengths: List[int]) -> List[str]:
         padding = []
+        self._max_length = max(lengths)
         for i in range(len(sentences)):
-            diff = max(lengths) - lengths[i]
+            diff = self.max_length - lengths[i]
             padding.append(["<PAD>" for _ in range(diff)])
         return padding
 

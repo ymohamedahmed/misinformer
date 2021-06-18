@@ -1,3 +1,3 @@
-from .embedding import WordEmbedding, Glove
+from .embedding import Glove, Bert, RNN, CNN, MLP
 from .pooling import MeanPooler
-from .tokenize import Tokenizer
+from .tokenize import StandardTokenizer, CustomBertTokenizer, Tokenizer

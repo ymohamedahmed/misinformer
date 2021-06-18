@@ -1,11 +1,11 @@
 import unittest
-from metaphor.models.common.tokenize import Tokenizer
+from metaphor.models.common.tokenize import StandardTokenizer
 import torch
 
 
 class TestTokenizer(unittest.TestCase):
     def setUp(self):
-        self.tokenizer = Tokenizer()
+        self.tokenizer = StandardTokenizer()
 
     def test_dictionary(self):
         test_sentences = ["Hello world", "Hello", ""]

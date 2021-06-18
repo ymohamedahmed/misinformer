@@ -1,29 +1,29 @@
-from metaphor.models.common.pooling import Pooler
+from metaphor.models.common.pooling import MeanPooler
 from typing import Dict, List
 import torch
 import torch.nn as nn
 import numpy as np
 import gensim
 import gensim.downloader as api
-from metaphor.models.common.tokenize import Tokenizer, BertTokenizer
-from transformers import BertTokenizer, BertModel
+from metaphor.models.common.tokenize import StandardTokenizer, CustomBertTokenizer
+import transformers
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 # Sentence - Glove/Bert -> Tensor of embeddings - CNN/RNN/MeanPool -> Single vector
-# e.g. nn.Sequential([Bert(), RNN()]) or nn.Sequential([WordEmbedding(Glove)])
+# e.g. nn.Sequential([Bert(), RNN()]) or nn.Sequential(Glove])
 
 
 class Bert(nn.Module):
-    def __init__(self, tokenizer: BertTokenizer):
+    def __init__(self, tokenizer: CustomBertTokenizer):
         super().__init__()
-        self.model = BertModel.from_pretrained("bert-base-uncased")
+        self.model = transformers.BertModel.from_pretrained("bert-base-uncased")
 
     def forward(self, x: torch.FloatTensor):
         return self.model(x)
 
 
 class Glove(nn.Module):
-    def __init__(self, tokenizer: Tokenizer):
+    def __init__(self, tokenizer: StandardTokenizer):
         super().__init__()
         print("Downloading glove gigaword")
         word_model = api.load("glove-wiki-gigaword-300")
@@ -68,7 +68,9 @@ class Glove(nn.Module):
 
 
 class RNN(nn.Module):
-    def __init__(self, tokenizer: Tokenizer, hidden_dim: int, embedding_size: int):
+    def __init__(
+        self, tokenizer: StandardTokenizer, hidden_dim: int, embedding_size: int
+    ):
         super().__init__()
         self.tokenizer = tokenizer
         # self.dictionary = dictionary
@@ -80,7 +82,7 @@ class RNN(nn.Module):
         # RNN
         self.rnn = nn.LSTM(
             input_size=embedding_size,
-            hidden_size=self.rnn_hid_dim,
+            hidden_size=self.hidden_dim,
             num_layers=1,
             bidirectional=True,
             batch_first=True,
@@ -106,7 +108,7 @@ class RNN(nn.Module):
 
         # feed through RNN
         text_embedding_packed = pack_padded_sequence(
-            text_embedding,
+            x_flat,
             self.tokenizer.sentence_lengths,
             batch_first=True,
             enforce_sorted=False,
@@ -118,28 +120,69 @@ class RNN(nn.Module):
 
         # concat forward and backward results (takes output states)
         seq_len_indices = [length - 1 for length in self.tokenizer.sentence_lengths]
-        batch_indices = [i for i in range(B * NK)]
+        batch_indices = [i for i in range(B)]
         rnn_out_forward = rnn_out[
-            batch_indices, seq_len_indices, : self.rnn_hid_dim
+            batch_indices, seq_len_indices, : self.hidden_dim
         ]  # last state of forward (not padded)
         rnn_out_backward = rnn_out[
-            :, 0, self.rnn_hid_dim :
+            :, 0, self.hidden_dim :
         ]  # last state of backward (= first timestep)
         seq_embed = torch.cat(
             (rnn_out_forward, rnn_out_backward), -1
         )  # (B*N*K, rnn_hid_dim*2)
         # unsqueeze
-        return seq_embed.view(B, NK, -1)  # (B, N*K, rnn_hid_dim*2)
+        return seq_embed.view(B, -1)  # (B, N*K, rnn_hid_dim*2)
 
 
 class CNN(nn.Module):
-    def __init__(self):
+    def __init__(
+        self,
+        conv_channels: List[int],
+        sentence_length: int,
+        embedding_dim: int,
+        kernel_sizes: List[int],
+    ):
         super().__init__()
+        layers = [nn.BatchNorm2d(conv_channels[0])]
+        for i in range(len(conv_channels) - 1):
+            layers.append(
+                nn.Conv2d(
+                    conv_channels[i],
+                    conv_channels[i + 1],
+                    kernel_size=kernel_sizes[i],
+                    stride=stride,
+                    padding=padding,
+                )
+            )
+            layers.append(nn.BatchNorm2d(conv_channels[i + 1]))
+            layers.append(nn.ReLU())
+            layers.append(nn.MaxPool2d(kernel_size=kernel_sizes[i], stride=1))
+        layers.pop()
+        layers.append(
+            nn.AdaptiveMaxPool2d(output_size=(sentence_length, embedding_dim))
+        )
+
+        layers.append(nn.Flatten())
+
+        self.model = nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.model(x)
 
 
 class MLP(nn.Module):
-    def __init__(self, layers: List[int]):
+    def __init__(self, layer_dimensions: List[int]):
         super().__init__()
+        # mlp_layers = [conv_channels[-1]*28*28] + mlp_layers
+        layers = []
+        for i in range(len(layer_dimensions) - 1):
+            layers.append(nn.Linear(layer_dimensions[i], layer_dimensions[i + 1]))
+            if i < len(layer_dimensions) - 2:
+                layers.append(nn.ReLU())
+        self.model = nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.model(x)
 
 
 # class MisinformationModel(nn.Module):
