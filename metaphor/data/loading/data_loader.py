@@ -37,9 +37,9 @@ class Pheme:
         test_indxs = indxs[r_split:]
 
         twids, embedding, labels = (
-            data["tweet_id"],
+            data["tweet_id"].values,
             embedder(tokenized_sentences),
-            data["veracity"],
+            data["veracity"].values,
         )
         self._train_loader = PhemeDataLoader(
             twids[train_indxs], embedding[train_indxs], labels[train_indxs]
