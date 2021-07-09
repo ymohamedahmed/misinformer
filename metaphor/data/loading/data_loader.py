@@ -41,15 +41,17 @@ class Pheme:
             embedder(tokenized_sentences),
             data["veracity"].values,
         )
-        self._train_loader = PhemeDataLoader(
+        train = PhemeDataset(
             twids[train_indxs], embedding[train_indxs], labels[train_indxs]
         )
-        self._val_loader = PhemeDataLoader(
-            twids[val_indxs], embedding[val_indxs], labels[val_indxs]
-        )
-        self._test_loader = PhemeDataLoader(
+        val = PhemeDataset(twids[val_indxs], embedding[val_indxs], labels[val_indxs])
+        test = PhemeDataset(
             twids[test_indxs], embedding[test_indxs], labels[test_indxs]
         )
+
+        self._train_loader = torch.utils.data.DataLoader(train)
+        self._val_loader = torch.utils.data.DataLoader(val)
+        self._test_loader = torch.utils.data.DataLoader(test)
 
     def _filter_dataset(self, data: pd.DataFrame) -> pd.DataFrame:
         # remove unwanted datapoints
@@ -79,7 +81,7 @@ class Pheme:
         return self._test_loader
 
 
-class PhemeDataLoader(torch.utils.data.DataLoader):
+class PhemeDataset(torch.utils.data.Dataset):
     def __init__(
         self, tweet_ids: torch.Tensor, embedding: torch.Tensor, labels: torch.Tensor
     ):
