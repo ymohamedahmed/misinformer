@@ -83,6 +83,7 @@ class PhemeDataLoader(torch.utils.data.DataLoader):
     def __init__(
         self, tweet_ids: torch.Tensor, embedding: torch.Tensor, labels: torch.Tensor
     ):
+        super().__init__()
         self.tweet_ids = tweet_ids
         self.embedding = embedding
         self.labels = labels
