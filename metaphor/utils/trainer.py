@@ -23,9 +23,10 @@ class ClassifierTrainer:
             N, mean_loss, mean_acc = 0, 0, 0
             for x, y in train:
                 optimizer.zero_grad()
-                x = x[1].to(self.device)
+                ind = x[0].to(self.device)
+                emb = x[1].to(self.device)
                 y = y.to(self.device)
-                logits = model(x)
+                logits = model(emb, ind)
                 loss = self.loss(logits, y)
                 loss.backward()
                 mean_loss += loss
@@ -52,9 +53,10 @@ class ClassifierTrainer:
     def _evaluate_validation(self, model: nn.Module, validation: DataLoader):
         N, mean_acc, mean_loss = 0, 0, 0
         for x, y in validation:
-            x = x.to(self.device)
+            ind = x[0].to(self.device)
+            emb = x[1].to(self.device)
             y = y.to(self.device)
-            logits = model(x)
+            logits = model(emb, ind)
             acc = ClassifierTrainer._acc(logits, y)
             loss = self.loss(logits, y)
             mean_acc += acc

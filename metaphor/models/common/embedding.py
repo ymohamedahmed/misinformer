@@ -116,7 +116,7 @@ class RNN(nn.Module):
             batch_first=True,
         )
 
-    def forward(self, x):
+    def forward(self, x, ind):
         """Params:
         - x (torch.LongTensor): tensor of embeddings shape (B x max_sequence_length x emb_dim)
         Returns:
@@ -147,7 +147,9 @@ class RNN(nn.Module):
         )  # (B*N*K, max_seq_len, rnn_hid_dim*2)
 
         # concat forward and backward results (takes output states)
-        seq_len_indices = [length - 1 for length in self.tokenizer.sentence_lengths]
+        seq_len_indices = [
+            length - 1 for length in self.tokenizer.sentence_lengths[ind]
+        ]
         batch_indices = [i for i in range(B)]
         rnn_out_forward = rnn_out[
             batch_indices, seq_len_indices, : self.hidden_dim
@@ -169,6 +171,8 @@ class CNN(nn.Module):
         sentence_length: int,
         embedding_dim: int,
         kernel_sizes: List[int],
+        stride=1,
+        padding=1,
     ):
         super().__init__()
         layers = [nn.BatchNorm2d(conv_channels[0])]
@@ -194,7 +198,7 @@ class CNN(nn.Module):
 
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensorm, ind) -> torch.Tensor:
         return self.model(x)
 
 

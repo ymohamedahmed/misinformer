@@ -53,6 +53,10 @@ class Pheme:
         self._val_loader = torch.utils.data.DataLoader(val)
         self._test_loader = torch.utils.data.DataLoader(test)
 
+        self.train_indxs = train_indxs
+        self.val_indxs = val_indxs
+        self.test_indxs = test_indxs
+
     def _filter_dataset(self, data: pd.DataFrame) -> pd.DataFrame:
         # remove unwanted datapoints
         return data.dropna()
