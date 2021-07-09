@@ -26,7 +26,7 @@ class ClassifierTrainer:
                 ind = x[0].to(self.device)
                 emb = x[1].to(self.device)
                 y = y.to(self.device)
-                logits = model(emb, ind)
+                logits = model.forward(emb, ind)
                 loss = self.loss(logits, y)
                 loss.backward()
                 mean_loss += loss
@@ -56,7 +56,7 @@ class ClassifierTrainer:
             ind = x[0].to(self.device)
             emb = x[1].to(self.device)
             y = y.to(self.device)
-            logits = model(emb, ind)
+            logits = model.forward(emb, ind)
             acc = ClassifierTrainer._acc(logits, y)
             loss = self.loss(logits, y)
             mean_acc += acc
