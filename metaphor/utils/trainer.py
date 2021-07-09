@@ -23,7 +23,7 @@ class ClassifierTrainer:
             N, mean_loss, mean_acc = 0, 0, 0
             for x, y in train:
                 optimizer.zero_grad()
-                x = x.to(self.device)
+                x = x[1].to(self.device)
                 y = y.to(self.device)
                 logits = self.model(x)
                 loss = self.loss(logits, y)
