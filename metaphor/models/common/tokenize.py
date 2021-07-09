@@ -27,22 +27,21 @@ class CustomBertTokenizer(Tokenizer):
             padding=True,
             truncation=True,
         )
-        self.mask = tokens["attention_mask"]
+        self._mask = tokens["attention_mask"]
         return tokens["input_ids"]
 
     @property
     def max_length(self) -> int:
         return self.mask.shape[1]
 
-
     @property
     def sentence_lengths(self) -> torch.Tensor:
+        return self._mask.sum(axis=1)
         # return self._sentence_lengths
-    
 
     @property
     def mask(self) -> torch.Tensor:
-        pass
+        return self._mask
 
 
 class StandardTokenizer(Tokenizer):
