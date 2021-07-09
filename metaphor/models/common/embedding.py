@@ -198,7 +198,7 @@ class CNN(nn.Module):
 
         self.model = nn.Sequential(*layers)
 
-    def forward(self, x: torch.Tensorm, ind) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
         return self.model(x)
 
 
