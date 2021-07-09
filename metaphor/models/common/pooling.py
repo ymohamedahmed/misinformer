@@ -1,6 +1,7 @@
 import torch
 from metaphor.models.common.tokenize import StandardTokenizer
 import torch.nn as nn
+import numpy as np
 
 
 class MeanPooler(nn.Module):
