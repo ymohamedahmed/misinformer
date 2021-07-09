@@ -39,16 +39,21 @@ def main():
         data = Pheme(
             file_path=pheme_path, tokenizer=tokenizer, embedder=embeddings[i](tokenizer)
         )
+        pool_args = {"tokenizer": tokenizer}
         cnn_args = {
             "conv_channels": [4, 4, 4],
             "sentence_length": tokenizer.max_length,
-            "embedding_dim": None,
+            "embedding_dim": 128,
             "kernel_sizes": [3, 3],
         }
+        rnn_args = {"tokenizer": tokenizer, "hidden_dim": 4, "embedding_size": 128}
+        args = [pool_args, cnn_args, rnn_args]
+
         for j in range(3):
-            classifier = nn.Sequential(models[j](), MLP(layers))
+            classifier = nn.Sequential(models[j](**args[j]), MLP(layers))
             trainer = ClassifierTrainer(**trainer_args)
-            trainer.fit(classifier, data.train, data.val)
+            results = trainer.fit(classifier, data.train, data.val)
+            print(results)
 
 
 if __name__ == "__main__":

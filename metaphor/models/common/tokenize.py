@@ -35,6 +35,16 @@ class CustomBertTokenizer(Tokenizer):
         return self.mask.shape[1]
 
 
+    @property
+    def sentence_lengths(self) -> torch.Tensor:
+        # return self._sentence_lengths
+    
+
+    @property
+    def mask(self) -> torch.Tensor:
+        pass
+
+
 class StandardTokenizer(Tokenizer):
     def __init__(self):
         self._dictionary = None
