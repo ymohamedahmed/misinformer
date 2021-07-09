@@ -25,7 +25,7 @@ class ClassifierTrainer:
                 optimizer.zero_grad()
                 x = x[1].to(self.device)
                 y = y.to(self.device)
-                logits = self.model(x)
+                logits = model(x)
                 loss = self.loss(logits, y)
                 loss.backward()
                 mean_loss += loss
