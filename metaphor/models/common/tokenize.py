@@ -32,11 +32,11 @@ class CustomBertTokenizer(Tokenizer):
 
     @property
     def max_length(self) -> int:
-        return self.mask.shape[1]
+        return self._mask.shape[1]
 
     @property
     def sentence_lengths(self) -> torch.Tensor:
-        return self._mask.sum(axis=1)
+        return self._mask.sum(axis=2)
         # return self._sentence_lengths
 
     @property
