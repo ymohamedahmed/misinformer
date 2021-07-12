@@ -21,7 +21,7 @@ def main():
     tokenizers = [CustomBertTokenizer, Tokenizer]
     embeddings = [Bert, Glove]
     models = [MeanPooler, RNN, CNN]
-    layers = [25, 5, 3]
+    layers = [768, 25, 5, 3]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     trainer_args = {
         "lr": 0.0001,
@@ -56,7 +56,6 @@ def main():
             classifier = MisinformationModel(models[j](**args[j]), MLP(layers))
             classifier.to(device)
             print(classifier)
-            print(classifier.summary())
             trainer = ClassifierTrainer(**trainer_args)
             results = trainer.fit(classifier, data.train, data.val)
             print(results)
