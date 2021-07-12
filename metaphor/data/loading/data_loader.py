@@ -41,13 +41,16 @@ class Pheme:
             embedder(tokenized_sentences),
             data["veracity"].values,
         )
-        train = PhemeDataset(
-            twids[train_indxs], embedding[train_indxs], labels[train_indxs]
-        )
-        val = PhemeDataset(twids[val_indxs], embedding[val_indxs], labels[val_indxs])
-        test = PhemeDataset(
-            twids[test_indxs], embedding[test_indxs], labels[test_indxs]
-        )
+        # train = PhemeDataset(
+        #     twids[train_indxs], embedding[train_indxs], labels[train_indxs]
+        # )
+        # val = PhemeDataset(twids[val_indxs], embedding[val_indxs], labels[val_indxs])
+        # test = PhemeDataset(
+        #     twids[test_indxs], embedding[test_indxs], labels[test_indxs]
+        # )
+        train = PhemeDataset(train_indxs, embedding[train_indxs], labels[train_indxs])
+        val = PhemeDataset(val_indxs, embedding[val_indxs], labels[val_indxs])
+        test = PhemeDataset(test_indxs, embedding[test_indxs], labels[test_indxs])
 
         self._train_loader = torch.utils.data.DataLoader(train)
         self._val_loader = torch.utils.data.DataLoader(val)
