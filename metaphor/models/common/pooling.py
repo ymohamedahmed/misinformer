@@ -7,13 +7,18 @@ import numpy as np
 class MeanPooler(nn.Module):
     def __init__(self, tokenizer: StandardTokenizer):
         super().__init__()
+        self.device = (torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),)
         self.tokenizer = tokenizer
 
-    def forward(self, x: torch.Tensor, indxs: np.array):
+    def forward(self, x: torch.Tensor, indxs: torch.Tensor):
         # N: num_sentences, M: max_sentence_length, D: embedding dimension
         # x has shape N x M x D, mask: N x M
-        sentence_lengths = self.tokenizer.sentence_lengths[indxs]  # N x 1
-        return torch.sum(x * self.tokenizer.mask[indxs], dim=2).div_(sentence_lengths)
+        sentence_lengths = self.tokenizer.sentence_lengths[indxs].to(
+            self.device
+        )  # N x 1
+        return torch.sum(
+            x * self.tokenizer.mask[indxs].unsqueeze(2).to(self.device), dim=2
+        ).div_(sentence_lengths)
 
 
 class MisinformationModel(nn.Module):
