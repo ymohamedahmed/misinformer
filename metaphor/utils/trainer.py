@@ -29,7 +29,7 @@ class ClassifierTrainer:
                 logits = model.forward(emb, ind)
                 loss = self.loss(logits, y)
                 loss.backward()
-                mean_loss += loss
+                mean_loss += loss.cpu()
                 mean_acc += ClassifierTrainer._acc(logits, y)
                 optimizer.step()
                 N += 1
@@ -60,6 +60,6 @@ class ClassifierTrainer:
             acc = ClassifierTrainer._acc(logits, y)
             loss = self.loss(logits, y)
             mean_acc += acc
-            mean_loss += loss
+            mean_loss += loss.cpu()
             N += 1
         return mean_acc/N, mean_loss/N
