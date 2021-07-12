@@ -22,12 +22,13 @@ def main():
     embeddings = [Bert, Glove]
     models = [MeanPooler, RNN, CNN]
     layers = [25, 5, 3]
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     trainer_args = {
         "lr": 0.0001,
         "patience": 10,
         "weight_decay": 0.01,
         "num_epochs": 200,
-        "device": torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+        "device": device,
         "loss": nn.CrossEntropyLoss,
     }
     print(Path(__file__).absolute())
@@ -53,6 +54,7 @@ def main():
         for j in range(3):
             # classifier = nn.Sequential(models[j](**args[j]), MLP(layers))
             classifier = MisinformationModel(models[j](**args[j]), MLP(layers))
+            classifier.to(device)
             trainer = ClassifierTrainer(**trainer_args)
             results = trainer.fit(classifier, data.train, data.val)
             print(results)
