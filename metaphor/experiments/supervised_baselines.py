@@ -55,6 +55,8 @@ def main():
             # classifier = nn.Sequential(models[j](**args[j]), MLP(layers))
             classifier = MisinformationModel(models[j](**args[j]), MLP(layers))
             classifier.to(device)
+            print(classifier)
+            print(classifier.summary())
             trainer = ClassifierTrainer(**trainer_args)
             results = trainer.fit(classifier, data.train, data.val)
             print(results)
