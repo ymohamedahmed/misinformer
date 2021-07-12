@@ -48,7 +48,7 @@ class ClassifierTrainer:
     @staticmethod
     def _acc(logits: torch.FloatTensor, y: torch.IntTensor):
         preds = torch.argmax(logits, dim=1)
-        return torch.mean(1.*(preds == y))
+        return torch.mean(1.*(preds == y)).item()
 
     def _evaluate_validation(self, model: nn.Module, validation: DataLoader):
         N, mean_acc, mean_loss = 0, 0, 0
