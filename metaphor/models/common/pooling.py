@@ -17,7 +17,7 @@ class MeanPooler(nn.Module):
             self.device
         )  # N x 1
         return torch.sum(
-            x * self.tokenizer.mask[indxs].unsqueeze(2).to(self.device), dim=2
+            x * self.tokenizer.mask[indxs].unsqueeze(2).to(self.device), dim=1
         ).div_(sentence_lengths)
 
 

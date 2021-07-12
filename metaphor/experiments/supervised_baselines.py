@@ -29,7 +29,7 @@ def main():
         "weight_decay": 0.01,
         "num_epochs": 200,
         "device": device,
-        "loss": nn.CrossEntropyLoss,
+        "loss": nn.CrossEntropyLoss(),
     }
     print(Path(__file__).absolute())
     pheme_path = os.path.join(
