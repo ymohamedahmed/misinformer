@@ -20,7 +20,7 @@ import torch
 def main():
     tokenizers = [CustomBertTokenizer, Tokenizer]
     embeddings = [Bert, Glove]
-    models = [MeanPooler, RNN, CNN]
+    models = [MeanPooler, CNN, RNN]
     layers = [768, 25, 5, 3]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     trainer_args = {
