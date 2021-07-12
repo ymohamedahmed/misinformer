@@ -9,6 +9,7 @@ from metaphor.models.common import (
     MeanPooler,
     CustomBertTokenizer,
     Tokenizer,
+    MisinformationModel,
 )
 from metaphor.utils.trainer import ClassifierTrainer
 from metaphor.data.loading.data_loader import Pheme
@@ -50,7 +51,8 @@ def main():
         args = [pool_args, cnn_args, rnn_args]
 
         for j in range(3):
-            classifier = nn.Sequential(models[j](**args[j]), MLP(layers))
+            # classifier = nn.Sequential(models[j](**args[j]), MLP(layers))
+            classifier = MisinformationModel(models[j](**args[j]), MLP(layers))
             trainer = ClassifierTrainer(**trainer_args)
             results = trainer.fit(classifier, data.train, data.val)
             print(results)
