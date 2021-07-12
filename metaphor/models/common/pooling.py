@@ -7,7 +7,7 @@ import numpy as np
 class MeanPooler(nn.Module):
     def __init__(self, tokenizer: StandardTokenizer):
         super().__init__()
-        self.device = (torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),)
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.tokenizer = tokenizer
 
     def forward(self, x: torch.Tensor, indxs: torch.Tensor):
