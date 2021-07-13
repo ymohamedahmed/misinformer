@@ -45,10 +45,10 @@ def main():
         cnn_args = {
             "conv_channels": [4, 4, 4],
             "sentence_length": tokenizer.max_length,
-            "embedding_dim": 128,
+            "embedding_dim": 768,
             "kernel_sizes": [3, 3],
         }
-        rnn_args = {"tokenizer": tokenizer, "hidden_dim": 4, "embedding_size": 128}
+        rnn_args = {"tokenizer": tokenizer, "hidden_dim": 768, "embedding_size": 768}
         args = [pool_args, cnn_args, rnn_args]
 
         for j in range(3):
