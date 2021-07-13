@@ -197,7 +197,7 @@ class CNN(nn.Module):
         self.model = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
-        return self.model(x.unsqueeze(2))
+        return self.model(x.unsqueeze(1))
 
 
 class MLP(nn.Module):
