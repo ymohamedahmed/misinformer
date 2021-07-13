@@ -190,9 +190,7 @@ class CNN(nn.Module):
             layers.append(nn.ReLU())
             layers.append(nn.MaxPool2d(kernel_size=kernel_sizes[i], stride=1))
         layers.pop()
-        layers.append(
-            nn.AdaptiveMaxPool2d(output_size=(sentence_length, embedding_dim))
-        )
+        layers.append(nn.AdaptiveMaxPool2d(output_size=(1, embedding_dim)))
 
         layers.append(nn.Flatten())
 
