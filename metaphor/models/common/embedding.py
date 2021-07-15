@@ -53,10 +53,12 @@ class Glove(nn.Module):
         ),
     ):
         super().__init__()
+        self._embed = None
+
+    def _construct_embedding(self):
         print("Downloading glove gigaword")
         word_model = api.load("glove-wiki-gigaword-300")
         embedding_dim = word_model.vector_size
-
         OOV = 0
         # randomly initialise OOV tokens between -1 and 1
         weights = np.random.uniform(
@@ -92,6 +94,8 @@ class Glove(nn.Module):
 
     def forward(self, x: torch.Tensor):
         # x is the tokens representing the sentence
+        if self._embed is None:
+            self._construct_embedding()
         return self._embed(x)
 
 
