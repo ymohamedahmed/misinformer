@@ -21,7 +21,10 @@ def main():
     tokenizers = [CustomBertTokenizer, StandardTokenizer]
     embeddings = [Bert, Glove]
     models = [MeanPooler, CNN, RNN]
-    layers = [[768, 25, 5, 3], [256, 25, 5, 3], [128, 25, 5, 3]]
+    layers = [
+        [[768, 25, 5, 3], [256, 25, 5, 3], [128, 25, 5, 3]],
+        [[300, 25, 5, 3], [256, 25, 5, 3], [128, 25, 5, 3]],
+    ]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     trainer_args = {
         "lr": 0.0001,
@@ -48,12 +51,24 @@ def main():
             "embedding_dim": 256,
             "kernel_sizes": [3, 3],
         }
-        rnn_args = {"tokenizer": tokenizer, "hidden_dim": 128, "embedding_size": 768}
-        args = [pool_args, cnn_args, rnn_args]
+        bert_rnn_args = {
+            "tokenizer": tokenizer,
+            "hidden_dim": 128,
+            "embedding_size": 768,
+        }
+        glove_rnn_args = {
+            "tokenizer": tokenizer,
+            "hidden_dim": 128,
+            "embedding_size": 300,
+        }
+        args = [
+            [pool_args, cnn_args, bert_rnn_args],
+            [pool_args, cnn_args, glove_rnn_args],
+        ]
 
         for j in range(3):
             # classifier = nn.Sequential(models[j](**args[j]), MLP(layers))
-            classifier = MisinformationModel(models[j](**args[j]), MLP(layers[j]))
+            classifier = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
             classifier.to(device)
             print(classifier)
             trainer = ClassifierTrainer(**trainer_args)
