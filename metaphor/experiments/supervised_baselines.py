@@ -27,7 +27,7 @@ def main():
     ]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     trainer_args = {
-        "lr": 0.0001,
+        "lr": 0.001,
         "patience": 10,
         "weight_decay": 0.01,
         "num_epochs": 200,
