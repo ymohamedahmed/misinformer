@@ -125,45 +125,6 @@ class RNN(nn.Module):
         # process data
         out, hidden = self.rnn(x)
         return out[:, -1, :]
-        # B, max_seq_len, embedding_dim = x.shape
-        # flatten batch
-        # x_flat = x.view(-1, max_seq_len)  # (B*emb_dim x max_seq_len)
-
-        # padding_masks
-        # padding_mask = torch.where(x_flat != self.padding_token, 1, 0)
-        # seq_lens = torch.sum(padding_mask, dim=-1).cpu()  # (B*N*K)
-
-        # embed
-        # text_embedding = self.embed(x_flat)  # (B*N*K x max_seq_len x emb_dim)
-
-        # feed through RNN
-        # text_embedding_packed = pack_padded_sequence(
-        #     x_flat,
-        #     self.tokenizer.sentence_lengths,
-        #     batch_first=True,
-        #     enforce_sorted=False,
-        # )
-        # rnn_out_packed, _ = self.rnn(text_embedding_packed)
-        # rnn_out, _ = pad_packed_sequence(
-        #     rnn_out_packed, batch_first=True
-        # )  # (B*N*K, max_seq_len, rnn_hid_dim*2)
-
-        # concat forward and backward results (takes output states)
-        # seq_len_indices = [
-        # length - 1 for length in self.tokenizer.sentence_lengths[ind]
-        # ]
-        # batch_indices = [i for i in range(B)]
-        # rnn_out_forward = rnn_out[
-        # batch_indices, seq_len_indices, : self.hidden_dim
-        # ]  # last state of forward (not padded)
-        # rnn_out_backward = rnn_out[
-        # :, 0, self.hidden_dim :
-        # ]  # last state of backward (= first timestep)
-        # seq_embed = torch.cat(
-        # (rnn_out_forward, rnn_out_backward), -1
-        # )  # (B*N*K, rnn_hid_dim*2)
-        # unsqueeze
-        # return seq_embed.view(B, -1)  # (B, N*K, rnn_hid_dim*2)
 
 
 class CNN(nn.Module):

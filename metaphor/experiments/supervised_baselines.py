@@ -8,7 +8,7 @@ from metaphor.models.common import (
     MLP,
     MeanPooler,
     CustomBertTokenizer,
-    Tokenizer,
+    StandardTokenizer,
     MisinformationModel,
 )
 from metaphor.utils.trainer import ClassifierTrainer
@@ -18,10 +18,10 @@ import torch
 
 # run all combinations of models
 def main():
-    tokenizers = [CustomBertTokenizer, Tokenizer]
+    tokenizers = [CustomBertTokenizer, StandardTokenizer]
     embeddings = [Bert, Glove]
     models = [MeanPooler, CNN, RNN]
-    layers = [[768, 25, 5, 3], [128, 25, 5, 3], [128, 25, 5, 3]]
+    layers = [[768, 25, 5, 3], [256, 25, 5, 3], [128, 25, 5, 3]]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     trainer_args = {
         "lr": 0.0001,
@@ -45,7 +45,7 @@ def main():
         cnn_args = {
             "conv_channels": [1, 1, 1],
             "sentence_length": tokenizer.max_length,
-            "embedding_dim": 128,
+            "embedding_dim": 256,
             "kernel_sizes": [3, 3],
         }
         rnn_args = {"tokenizer": tokenizer, "hidden_dim": 128, "embedding_size": 768}
