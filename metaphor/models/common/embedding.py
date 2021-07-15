@@ -53,6 +53,7 @@ class Glove(nn.Module):
         ),
     ):
         super().__init__()
+        self._tokenizer = tokenizer
         self._embed = None
 
     def _construct_embedding(self):
@@ -62,7 +63,7 @@ class Glove(nn.Module):
         OOV = 0
         # randomly initialise OOV tokens between -1 and 1
         weights = np.random.uniform(
-            low=-1, high=1, size=(len(tokenizer.dictionary), embedding_dim)
+            low=-1, high=1, size=(len(self._tokenizer.dictionary), embedding_dim)
         )
 
         mean_embedding = np.zeros(embedding_dim)
@@ -70,7 +71,7 @@ class Glove(nn.Module):
 
         print("Begin computing embedding")
         # represent unknown tokens with the mean of the embeddings
-        for word, token in tokenizer.dictionary.token2id.items():
+        for word, token in self._tokenizer.dictionary.token2id.items():
             print(f"{word} {token}")
             if word == "<PAD>":
                 weights[token, :] = np.zeros(embedding_dim)
@@ -83,7 +84,7 @@ class Glove(nn.Module):
                 OOV += 1
 
         mean_embedding = mean_embedding / vec_count
-        for word, token in tokenizer.dictionary.token2id.items():
+        for word, token in self._tokenizer.dictionary.token2id.items():
             if not (word in word_model.key_to_index):
                 print(f"{word} {token}")
                 weights[token, :] = mean_embedding
