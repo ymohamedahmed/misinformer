@@ -105,7 +105,7 @@ class StandardTokenizer(Tokenizer):
             " ".join([x for x in tokenize(d.lower())] + padding[i])
             for (i, d) in enumerate(sentences)
         ]
-        tokenized_sentences = torch.Tensor(
+        tokenized_sentences = torch.IntTensor(
             [
                 [dictionary.token2id[z] for z in padded_sentences[i].split(" ")]
                 for i, d in enumerate(sentences)

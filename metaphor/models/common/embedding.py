@@ -72,7 +72,7 @@ class Glove(nn.Module):
         print("Begin computing embedding")
         # represent unknown tokens with the mean of the embeddings
         for word, token in self._tokenizer.dictionary.token2id.items():
-            print(f"{word} {token}")
+            # print(f"{word} {token}")
             if word == "<PAD>":
                 weights[token, :] = np.zeros(embedding_dim)
             elif word in word_model.key_to_index:
@@ -86,7 +86,6 @@ class Glove(nn.Module):
         mean_embedding = mean_embedding / vec_count
         for word, token in self._tokenizer.dictionary.token2id.items():
             if not (word in word_model.key_to_index):
-                print(f"{word} {token}")
                 weights[token, :] = mean_embedding
 
         # print number out of vocab
