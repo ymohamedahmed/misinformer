@@ -14,6 +14,7 @@ class Pheme:
         file_path: str,
         tokenizer: StandardTokenizer,
         embedder: nn.Module,
+        batch_size: int = 128,
         seed: int = 0,
         train_size: float = 0.6,
         val_size: float = 0.2,
@@ -52,9 +53,9 @@ class Pheme:
         val = PhemeDataset(val_indxs, embedding[val_indxs], labels[val_indxs])
         test = PhemeDataset(test_indxs, embedding[test_indxs], labels[test_indxs])
 
-        self._train_loader = torch.utils.data.DataLoader(train)
-        self._val_loader = torch.utils.data.DataLoader(val)
-        self._test_loader = torch.utils.data.DataLoader(test)
+        self._train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size)
+        self._val_loader = torch.utils.data.DataLoader(val, batch_size=batch_size)
+        self._test_loader = torch.utils.data.DataLoader(test, batch_size=batch_size)
 
         self.train_indxs = train_indxs
         self.val_indxs = val_indxs

@@ -42,7 +42,7 @@ def main():
     for i in range(2):
         tokenizer = tokenizers[i]()
         data = Pheme(
-            file_path=pheme_path, tokenizer=tokenizer, embedder=embeddings[i](tokenizer)
+            file_path=pheme_path, tokenizer=tokenizer, embedder=embeddings[i](tokenize)
         )
         pool_args = {"tokenizer": tokenizer}
         cnn_args = {
