@@ -57,8 +57,8 @@ class Glove(nn.Module):
         self._embed = None
 
     def _construct_embedding(self):
-        print("Downloading glove gigaword")
-        word_model = api.load("glove-wiki-gigaword-300")
+        print("Downloading glove twitter vectors")
+        word_model = api.load("glove-twitter-200")
         embedding_dim = word_model.vector_size
         OOV = 0
         # randomly initialise OOV tokens between -1 and 1
