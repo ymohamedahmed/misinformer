@@ -22,12 +22,12 @@ def main():
     embeddings = [Bert, Glove]
     models = [MeanPooler, CNN, RNN]
     layers = [
-        [[768, 25, 5, 3], [256, 25, 5, 3], [256, 25, 5, 3]],
-        [[200, 25, 5, 3], [200, 25, 5, 3], [200, 25, 5, 3]],
+        [[768, 25, 5, 3], [210, 25, 5, 3], [256, 25, 5, 3]],
+        [[200, 25, 5, 3], [210, 25, 5, 3], [200, 25, 5, 3]],
     ]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     trainer_args = {
-        "lr": 0.0001,
+        "lr": 0.0005,
         "patience": 10,
         "weight_decay": 0.01,
         "num_epochs": 200,
@@ -46,16 +46,16 @@ def main():
         )
         pool_args = {"tokenizer": tokenizer}
         cnn_args = {
-            "conv_channels": [1, 1, 1],
+            "conv_channels": [1, 3, 3, 3],
             "sentence_length": tokenizer.max_length,
-            "embedding_dim": 256,
-            "kernel_sizes": [3, 3],
+            "output_dim": 210,
+            "kernel_sizes": [3, 3, 3],
         }
         glove_cnn_args = {
-            "conv_channels": [1, 1, 1],
+            "conv_channels": [1, 3, 3, 3],
             "sentence_length": tokenizer.max_length,
-            "embedding_dim": 200,
-            "kernel_sizes": [3, 3],
+            "output_dim": 210,
+            "kernel_sizes": [3, 3, 3],
         }
         bert_rnn_args = {
             "tokenizer": tokenizer,
@@ -72,7 +72,7 @@ def main():
             [pool_args, glove_cnn_args, glove_rnn_args],
         ]
 
-        for j in range(3):
+        for j in range(1, 2):
             # classifier = nn.Sequential(models[j](**args[j]), MLP(layers))
             classifier = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
             classifier.to(device)
@@ -80,6 +80,10 @@ def main():
             trainer = ClassifierTrainer(**trainer_args)
             results = trainer.fit(classifier, data.train, data.val)
             print(results)
+            tacc = results["train_accuracy"]
+            print(
+                f"max train acc: {max(tacc)}, val acc: {max(results['validation_accuracy'])}"
+            )
 
 
 if __name__ == "__main__":

@@ -152,7 +152,8 @@ class CNN(nn.Module):
         self,
         conv_channels: List[int],
         sentence_length: int,
-        embedding_dim: int,
+        output_dim: int,
+        tokenizer: Tokenizer,
         kernel_sizes: List[int],
         stride=1,
         padding=1,
@@ -173,14 +174,19 @@ class CNN(nn.Module):
             layers.append(nn.ReLU())
             layers.append(nn.MaxPool2d(kernel_size=kernel_sizes[i], stride=1))
         layers.pop()
-        layers.append(nn.AdaptiveMaxPool2d(output_size=(1, embedding_dim)))
+        layers.append(nn.AdaptiveMaxPool2d(output_size=(sentence_length, output_dim)))
 
         layers.append(nn.Flatten())
 
         self.model = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
-        return self.model(x.unsqueeze(1))
+        sentence_lengths = self.tokenizer.sentence_lengths[ind].to(self.device)  # N x 1
+        return torch.sum(
+            self.model(x.unsqueeze(1))
+            * self.tokenizer.mask[ind].unsqueeze(2).to(self.device),
+            dim=1,
+        ).div_(sentence_lengths.unsqueeze(1))
 
 
 class MLP(nn.Module):
