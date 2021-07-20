@@ -158,6 +158,7 @@ class CNN(nn.Module):
         sentence_length: int,
         output_dim: int,
         tokenizer: Tokenizer,
+        device: str,
         kernel_sizes: List[int],
         stride=1,
         padding=1,
