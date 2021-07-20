@@ -185,6 +185,7 @@ class CNN(nn.Module):
 
         self.tokenizer = tokenizer
         self.model = nn.Sequential(*layers)
+        self.device = device
 
     def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
         sentence_lengths = self.tokenizer.sentence_lengths[ind].to(self.device)
