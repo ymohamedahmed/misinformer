@@ -189,6 +189,9 @@ class CNN(nn.Module):
 
     def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
         sentence_lengths = self.tokenizer.sentence_lengths[ind].to(self.device)
+        print(self.model(x.unsqueeze(1).shape)
+        print(self.tokenizer.mask[ind].unsqueeze(2).shape)
+        print(sentence_lengths.unsqueeze(1).shape)
         return torch.sum(
             self.model(x.unsqueeze(1))
             * self.tokenizer.mask[ind].unsqueeze(2).to(self.device),
