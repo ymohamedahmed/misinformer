@@ -18,7 +18,7 @@ class MeanPooler(nn.Module):
         )  # N x 1
         return torch.sum(
             x * self.tokenizer.mask[indxs].unsqueeze(2).to(self.device), dim=1
-        ).div_(sentence_lengths)
+        ).div_(sentence_lengths.unsqueeze(1))
 
 
 class MisinformationModel(nn.Module):
