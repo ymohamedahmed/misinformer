@@ -128,10 +128,23 @@ class RNN(nn.Module):
         """
         # process data
         sent_lens = self.tokenizer.sentence_lengths[ind]
-        x = pack_padded_sequence(x, sent_lens, batch_first=True, enforce_sorted=True)
-        out, hidden = self.rnn(x)
-        out = pad_packed_sequence(out, batch_first=True)
-        return out[:, -1, :]
+        packed = pack_padded_sequence(
+            x, sent_lens, batch_first=True, enforce_sorted=False
+        )
+        out, hidden = self.rnn(packed)
+        out, _ = pad_packed_sequence(out, batch_first=True)
+        seq_len_indices = [(length - 1).item() for length in sent_lens]
+        batch_indices = [i for i in range(x.shape[0])]
+        rnn_out_forward = out[
+            batch_indices, seq_len_indices, : self.hidden_dim
+        ]  # last state of forward (not padded)
+        rnn_out_backward = out[
+            :, 0, self.hidden_dim :
+        ]  # last state of backward (= first timestep)
+        seq_embed = torch.cat(
+            (rnn_out_forward, rnn_out_backward), -1
+        )  # (B*N*K, rnn_hid_dim*2)
+        return seq_embed
 
 
 class CNN(nn.Module):
