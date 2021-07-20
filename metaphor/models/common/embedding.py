@@ -5,7 +5,11 @@ import torch.nn as nn
 import numpy as np
 import gensim
 import gensim.downloader as api
-from metaphor.models.common.tokenize import StandardTokenizer, CustomBertTokenizer
+from metaphor.models.common.tokenize import (
+    StandardTokenizer,
+    CustomBertTokenizer,
+    Tokenizer,
+)
 import transformers
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
@@ -178,10 +182,11 @@ class CNN(nn.Module):
 
         layers.append(nn.Flatten())
 
+        self.tokenizer = tokenizer
         self.model = nn.Sequential(*layers)
 
     def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
-        sentence_lengths = self.tokenizer.sentence_lengths[ind].to(self.device)  # N x 1
+        sentence_lengths = self.tokenizer.sentence_lengths[ind].to(self.device)
         return torch.sum(
             self.model(x.unsqueeze(1))
             * self.tokenizer.mask[ind].unsqueeze(2).to(self.device),
