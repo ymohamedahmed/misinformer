@@ -22,8 +22,8 @@ def main():
     embeddings = [Bert, Glove]
     models = [MeanPooler, CNN, RNN]
     layers = [
-        [[768, 25, 5, 3], [3 * 50 * 210, 25, 5, 3], [256, 25, 5, 3]],
-        [[200, 25, 5, 3], [3 * 50 * 210, 25, 5, 3], [200, 25, 5, 3]],
+        [[768, 25, 5, 3], [3 * 210, 25, 5, 3], [256, 25, 5, 3]],
+        [[200, 25, 5, 3], [3 * 210, 25, 5, 3], [200, 25, 5, 3]],
     ]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     trainer_args = {

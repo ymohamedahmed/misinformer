@@ -167,7 +167,7 @@ class CNN(nn.Module):
         layers = [nn.BatchNorm2d(conv_channels[0])]
         for i in range(len(conv_channels) - 1):
             layers.append(
-                nn.Conv2d(
+                nn.Conv1d(
                     conv_channels[i],
                     conv_channels[i + 1],
                     kernel_size=kernel_sizes[i],
@@ -189,12 +189,10 @@ class CNN(nn.Module):
 
     def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
         sentence_lengths = self.tokenizer.sentence_lengths[ind].to(self.device)
-        print(self.model(x.unsqueeze(1).shape)
-        print(self.tokenizer.mask[ind].unsqueeze(2).shape)
-        print(sentence_lengths.unsqueeze(1).shape)
+        out = self.model(x.unsqueeze(1))
+        out = out.reshape(out.shape[0], out.shape[2], out.shape[1] * out.shape[3])
         return torch.sum(
-            self.model(x.unsqueeze(1))
-            * self.tokenizer.mask[ind].unsqueeze(2).to(self.device),
+            out * self.tokenizer.mask[ind].unsqueeze(2).to(self.device),
             dim=1,
         ).div_(sentence_lengths.unsqueeze(1))
 
@@ -212,16 +210,3 @@ class MLP(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
-
-
-# class MisinformationModel(nn.Module):
-#     def __init__(self, embedding: nn.Module, classifier: nn.Module):
-#         super().__init__()
-#         self.model = nn.Sequential(embedding, classifier)
-#         self._embed = embedding
-
-#     def forward(self, x: torch.Tensor):
-#         return self.model(x)
-
-# def evaluate(self, x: torch.Tensor):
-#     return self.model(x)

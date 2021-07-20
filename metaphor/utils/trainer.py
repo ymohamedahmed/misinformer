@@ -33,13 +33,13 @@ class ClassifierTrainer:
                 mean_acc += ClassifierTrainer._acc(logits, y)
                 optimizer.step()
                 N += 1
-            train_acc.append(mean_acc/N)
-            train_loss.append(mean_loss/N)
+            train_acc.append(mean_acc.item()/N)
+            train_loss.append(mean_loss.item()/N)
 
             # evaluate on validation set
             vacc, vloss = self._evaluate_validation(model, validation)
-            val_acc.append(vacc)
-            val_loss.append(vloss)
+            val_acc.append(vacc.item())
+            val_loss.append(vloss.item())
             if epoch - np.argmin(np.array(val_loss)) > self.patience:
                 break
         return {'train_accuracy': train_acc, 'train_loss': train_loss,
