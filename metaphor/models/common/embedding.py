@@ -127,7 +127,10 @@ class RNN(nn.Module):
         - text_embedding (torch.FloatTensor): embedded sequence (B x emb_dim)
         """
         # process data
+        sent_lens = self.tokenizer.sentence_lengths[ind]
+        x = pack_padded_sequence(x, sent_lens, batch_first=True, enforce_sorted=True)
         out, hidden = self.rnn(x)
+        out = pad_packed_sequence(out, batch_first=True)
         return out[:, -1, :]
 
 
