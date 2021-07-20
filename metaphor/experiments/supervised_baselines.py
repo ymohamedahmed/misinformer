@@ -50,12 +50,14 @@ def main():
             "sentence_length": tokenizer.max_length,
             "output_dim": 210,
             "kernel_sizes": [3, 3, 3],
+            "tokenizer": tokenizer,
         }
         glove_cnn_args = {
             "conv_channels": [1, 3, 3, 3],
             "sentence_length": tokenizer.max_length,
             "output_dim": 210,
             "kernel_sizes": [3, 3, 3],
+            "tokenizer": tokenizer,
         }
         bert_rnn_args = {
             "tokenizer": tokenizer,
