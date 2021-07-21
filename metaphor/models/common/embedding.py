@@ -157,7 +157,6 @@ class CNN(nn.Module):
         conv_channels: List[int],
         sentence_length: int,
         output_dim: int,
-        embedding_dim: int,
         tokenizer: Tokenizer,
         device: str,
         kernel_sizes: List[int],
@@ -180,7 +179,7 @@ class CNN(nn.Module):
             layers.append(nn.ReLU())
             layers.append(nn.MaxPool1d(kernel_size=kernel_sizes[i], stride=1))
         layers.pop()
-        layers.append(nn.AdaptiveMaxPool1d(output_size=(sentence_length, output_dim)))
+        layers.append(nn.AdaptiveMaxPool1d(output_size=output_dim))
 
         layers.append(nn.Flatten())
 
@@ -190,6 +189,8 @@ class CNN(nn.Module):
 
     def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
         sentence_lengths = self.tokenizer.sentence_lengths[ind].to(self.device)
+        out = self.model(x)
+        return out
         out = self.model(x.unsqueeze(1))
         out = out.reshape(out.shape[0], out.shape[2], out.shape[1] * out.shape[3])
         return torch.sum(
