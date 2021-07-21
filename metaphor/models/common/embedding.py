@@ -175,11 +175,11 @@ class CNN(nn.Module):
                     padding=padding,
                 )
             )
-            layers.append(nn.BatchNorm2d(conv_channels[i + 1]))
+            layers.append(nn.BatchNorm1d(conv_channels[i + 1]))
             layers.append(nn.ReLU())
-            layers.append(nn.MaxPool2d(kernel_size=kernel_sizes[i], stride=1))
+            layers.append(nn.MaxPool1d(kernel_size=kernel_sizes[i], stride=1))
         layers.pop()
-        layers.append(nn.AdaptiveMaxPool2d(output_size=(sentence_length, output_dim)))
+        layers.append(nn.AdaptiveMaxPool1d(output_size=(sentence_length, output_dim)))
 
         layers.append(nn.Flatten())
 
