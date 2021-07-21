@@ -34,7 +34,7 @@ class ClassifierTrainer:
                 optimizer.step()
                 N += 1
             train_acc.append(mean_acc.item()/N)
-            train_loss.append(mean_loss.item()/N)
+            train_loss.append(mean_loss/N)
 
             # evaluate on validation set
             vacc, vloss = self._evaluate_validation(model, validation)

@@ -157,6 +157,7 @@ class CNN(nn.Module):
         conv_channels: List[int],
         sentence_length: int,
         output_dim: int,
+        embedding_dim: int,
         tokenizer: Tokenizer,
         device: str,
         kernel_sizes: List[int],
