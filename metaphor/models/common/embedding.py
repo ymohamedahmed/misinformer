@@ -164,7 +164,7 @@ class CNN(nn.Module):
         padding=1,
     ):
         super().__init__()
-        # layers = [nn.BatchNorm2d(conv_channels[0])]
+        # layers = [nn.BatchNorm1d(conv_channels[0])]
         layers = []
         for i in range(len(conv_channels) - 1):
             layers.append(
@@ -176,7 +176,8 @@ class CNN(nn.Module):
                     padding=padding,
                 )
             )
-            layers.append(nn.BatchNorm1d(conv_channels[i + 1]))
+            layers.append(nn.Dropout(p=0.1))
+            # layers.append(nn.BatchNorm1d(conv_channels[i + 1]))
             layers.append(nn.ReLU())
             layers.append(nn.MaxPool1d(kernel_size=kernel_sizes[i], stride=1))
         layers.pop()
@@ -189,16 +190,9 @@ class CNN(nn.Module):
         self.device = device
 
     def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
-        sentence_lengths = self.tokenizer.sentence_lengths[ind].to(self.device)
         s = x.shape
         out = self.model(x.reshape(s[0], s[2], s[1]))
         return out
-        out = self.model(x.unsqueeze(1))
-        out = out.reshape(out.shape[0], out.shape[2], out.shape[1] * out.shape[3])
-        return torch.sum(
-            out * self.tokenizer.mask[ind].unsqueeze(2).to(self.device),
-            dim=1,
-        ).div_(sentence_lengths.unsqueeze(1))
 
 
 class MLP(nn.Module):

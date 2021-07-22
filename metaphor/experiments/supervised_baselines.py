@@ -23,14 +23,14 @@ def main():
     models = [MeanPooler, CNN, RNN]
     layers = [
         [[768, 25, 5, 3], [20 * 210, 25, 5, 3], [256, 25, 5, 3]],
-        [[200, 25, 5, 3], [20 * 210, 25, 5, 3], [200, 25, 5, 3]],
+        [[200, 25, 5, 3], [20 * 150, 25, 5, 3], [200, 25, 5, 3]],
     ]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     trainer_args = {
-        "lr": 0.0005,
-        "patience": 10,
+        "lr": 0.001,
+        "patience": 30,
         "weight_decay": 0.01,
-        "num_epochs": 200,
+        "num_epochs": 400,
         "device": device,
         "loss": nn.CrossEntropyLoss(),
     }
@@ -46,18 +46,18 @@ def main():
         )
         pool_args = {"tokenizer": tokenizer}
         cnn_args = {
-            "conv_channels": [768, 20, 20],
+            "conv_channels": [768, 20],
             "sentence_length": tokenizer.max_length,
             "output_dim": 210,
-            "kernel_sizes": [5, 5],
+            "kernel_sizes": [5],
             "device": device,
             "tokenizer": tokenizer,
         }
         glove_cnn_args = {
-            "conv_channels": [200, 20, 20],
+            "conv_channels": [200, 20],
             "sentence_length": tokenizer.max_length,
-            "output_dim": 210,
-            "kernel_sizes": [5, 5],
+            "output_dim": 150,
+            "kernel_sizes": [7],
             "device": device,
             "tokenizer": tokenizer,
         }
@@ -76,7 +76,7 @@ def main():
             [pool_args, glove_cnn_args, glove_rnn_args],
         ]
 
-        for j in range(1, 2):
+        for j in range(3):
             # classifier = nn.Sequential(models[j](**args[j]), MLP(layers))
             classifier = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
             classifier.to(device)
