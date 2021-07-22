@@ -39,7 +39,7 @@ class ClassifierTrainer:
             # evaluate on validation set
             vacc, vloss = self._evaluate_validation(model, validation)
             val_acc.append(vacc.item())
-            val_loss.append(vloss.item())
+            val_loss.append(vloss)
             if epoch - np.argmin(np.array(val_loss)) > self.patience:
                 break
         return {'train_accuracy': train_acc, 'train_loss': train_loss,

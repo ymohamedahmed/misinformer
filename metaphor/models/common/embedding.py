@@ -164,7 +164,8 @@ class CNN(nn.Module):
         padding=1,
     ):
         super().__init__()
-        layers = [nn.BatchNorm2d(conv_channels[0])]
+        # layers = [nn.BatchNorm2d(conv_channels[0])]
+        layers = []
         for i in range(len(conv_channels) - 1):
             layers.append(
                 nn.Conv1d(
@@ -189,7 +190,8 @@ class CNN(nn.Module):
 
     def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
         sentence_lengths = self.tokenizer.sentence_lengths[ind].to(self.device)
-        out = self.model(x)
+        s = x.shape
+        out = self.model(x.reshape(s[0], s[2], s[1]))
         return out
         out = self.model(x.unsqueeze(1))
         out = out.reshape(out.shape[0], out.shape[2], out.shape[1] * out.shape[3])

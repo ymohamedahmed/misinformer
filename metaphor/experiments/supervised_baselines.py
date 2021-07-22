@@ -22,8 +22,8 @@ def main():
     embeddings = [Bert, Glove]
     models = [MeanPooler, CNN, RNN]
     layers = [
-        [[768, 25, 5, 3], [100 * 210, 25, 5, 3], [256, 25, 5, 3]],
-        [[200, 25, 5, 3], [100 * 210, 25, 5, 3], [200, 25, 5, 3]],
+        [[768, 25, 5, 3], [20 * 210, 25, 5, 3], [256, 25, 5, 3]],
+        [[200, 25, 5, 3], [20 * 210, 25, 5, 3], [200, 25, 5, 3]],
     ]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     trainer_args = {
@@ -46,18 +46,18 @@ def main():
         )
         pool_args = {"tokenizer": tokenizer}
         cnn_args = {
-            "conv_channels": [768, 100, 100, 100],
+            "conv_channels": [768, 20, 20],
             "sentence_length": tokenizer.max_length,
             "output_dim": 210,
-            "kernel_sizes": [5, 5, 5],
+            "kernel_sizes": [5, 5],
             "device": device,
             "tokenizer": tokenizer,
         }
         glove_cnn_args = {
-            "conv_channels": [200, 100, 100, 100],
+            "conv_channels": [200, 20, 20],
             "sentence_length": tokenizer.max_length,
             "output_dim": 210,
-            "kernel_sizes": [5, 5, 5],
+            "kernel_sizes": [5, 5],
             "device": device,
             "tokenizer": tokenizer,
         }
