@@ -62,8 +62,8 @@ class Glove(nn.Module):
 
     def _construct_embedding(self):
         print("Downloading glove twitter vectors")
-        word_model = api.load("glove-twitter-200")
-        embedding_dim = word_model.vector_size
+        self.model = api.load("glove-twitter-200")
+        embedding_dim = self.model.vector_size
         OOV = 0
         # randomly initialise OOV tokens between -1 and 1
         weights = np.random.uniform(
@@ -79,8 +79,8 @@ class Glove(nn.Module):
             # print(f"{word} {token}")
             if word == "<PAD>":
                 weights[token, :] = np.zeros(embedding_dim)
-            elif word in word_model.key_to_index:
-                vec = word_model[word]
+            elif word in self.model.key_to_index:
+                vec = self.model[word]
                 vec_count += 1
                 mean_embedding += vec
                 weights[token, :] = vec
@@ -89,7 +89,7 @@ class Glove(nn.Module):
 
         mean_embedding = mean_embedding / vec_count
         for word, token in self._tokenizer.dictionary.token2id.items():
-            if not (word in word_model.key_to_index):
+            if not (word in self.model.key_to_index):
                 weights[token, :] = mean_embedding
 
         # print number out of vocab

@@ -44,6 +44,8 @@ class KSynonymAttack(Attack):
         self.embedding = embedding
         self.model = model
         self.attempts = attempts
+        self.batch_size = batch_size
+        self.N = N
 
     def attack(self, sentences: List[str], labels: List[int]) -> List[str]:
         """
@@ -59,13 +61,16 @@ class KSynonymAttack(Attack):
             # indices of words to substitute
             for sentence in sentences[start:end]:
                 attacked_sen = []
+                sentence = sentence.split(" ")
                 for i in range(self.attempts):
                     indxs = np.random.choice(len(sentence), size=self.k)
                     for j in indxs:
                         new_sent = sentence.copy()
                         synonyms = [
                             x[0]
-                            for x in self.embedding.most_similar(sentence[j])[: self.N]
+                            for x in self.embedding.model.most_similar(sentence[j])[
+                                : self.N
+                            ]
                         ]
                         new_sent[j] = np.random.choice(synonyms)
                     attacked_sen.append(new_sent)
