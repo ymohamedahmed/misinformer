@@ -26,9 +26,9 @@ class Pheme:
             raise Exception(f"No such path: {file_path}")
         np.random.seed(seed)
         data = self._filter_dataset(pd.read_csv(file_path))
+        self.data = data
         data["text"] = self._preprocess_text(data["text"])
         data["veracity"] = self._process_labels(data["veracity"])
-        print(data["text"].values)
         N = len(data["text"].values)
 
         indxs = np.arange(N)

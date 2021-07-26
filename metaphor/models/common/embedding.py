@@ -155,10 +155,7 @@ class CNN(nn.Module):
     def __init__(
         self,
         conv_channels: List[int],
-        sentence_length: int,
         output_dim: int,
-        tokenizer: Tokenizer,
-        device: str,
         kernel_sizes: List[int],
         stride=1,
         padding=1,
@@ -185,9 +182,7 @@ class CNN(nn.Module):
 
         layers.append(nn.Flatten())
 
-        self.tokenizer = tokenizer
         self.model = nn.Sequential(*layers)
-        self.device = device
 
     def forward(self, x: torch.Tensor, ind) -> torch.Tensor:
         s = x.shape
