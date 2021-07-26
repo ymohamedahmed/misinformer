@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import torch
 import numpy as np
+import wandb
 
 
 class ClassifierTrainer:
@@ -30,14 +31,16 @@ class ClassifierTrainer:
                 loss = self.loss(logits, y)
                 loss.backward()
                 mean_loss += loss.detach().cpu().item()
-                mean_acc += ClassifierTrainer._acc(logits, y)
+                mean_acc += ClassifierTrainer._acc(logits, y).item()
                 optimizer.step()
                 N += 1
-            train_acc.append(mean_acc.item()/N)
+            train_acc.append(mean_acc/N)
             train_loss.append(mean_loss/N)
 
             # evaluate on validation set
             vacc, vloss = self._evaluate_validation(model, validation)
+            wandb.log({'train_loss': mean_loss/N, 'train_accuracy': mean_acc/N,
+                       'validation_accuracy': vacc, 'validation_loss': vloss})
             val_acc.append(vacc.item())
             val_loss.append(vloss)
             if epoch - np.argmin(np.array(val_loss)) > self.patience:

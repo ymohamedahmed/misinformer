@@ -15,9 +15,11 @@ from metaphor.utils.trainer import ClassifierTrainer
 from metaphor.data.loading.data_loader import Pheme
 import os
 import torch
+import wandb
 
 # run all combinations of models
 def main():
+
     tokenizers = [CustomBertTokenizer, StandardTokenizer]
     embeddings = [Bert, Glove]
     models = [MeanPooler, CNN, RNN]
@@ -34,6 +36,12 @@ def main():
         "device": device,
         "loss": nn.CrossEntropyLoss(),
     }
+    PATH = "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/"
+    file_names = [
+        ["bert-mean.npy", "bert-cnn.npy", "bert-rnn.npy"],
+        ["glove-mean.npy", "glove-cnn.npy", "glove-rnn.npy"],
+    ]
+
     print(Path(__file__).absolute())
     pheme_path = os.path.join(
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
@@ -77,17 +85,23 @@ def main():
         ]
 
         for j in range(3):
-            # classifier = nn.Sequential(models[j](**args[j]), MLP(layers))
+            wandb.init(project="metaphor", entity="youmed")
+            config = wandb.config
+            config.args = args[i][j]
+            config.layers = layers[i][j]
             classifier = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
+            wandb.watch(classifier)
             classifier.to(device)
             print(classifier)
             trainer = ClassifierTrainer(**trainer_args)
             results = trainer.fit(classifier, data.train, data.val)
             print(results)
-            tacc = results["train_accuracy"]
             print(
-                f"max train acc: {max(tacc)}, val acc: {max(results['validation_accuracy'])}"
+                f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}"
             )
+
+            # log results and save model
+            torch.save(classifier.state_dict(), PATH + file_names[i][j])
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 from typing import Tuple, List
 import re
+import metaphor.adversary.attacks
 
 
 class Pheme:
@@ -19,6 +20,7 @@ class Pheme:
         train_size: float = 0.6,
         val_size: float = 0.2,
         test_size: float = 0.2,
+        attack: metaphor.adversary.attacks.Attack = None,
     ):
         if not (os.path.exists(file_path)):
             raise Exception(f"No such path: {file_path}")
@@ -28,8 +30,7 @@ class Pheme:
         data["veracity"] = self._process_labels(data["veracity"])
         print(data["text"].values)
         N = len(data["text"].values)
-        tokenized_sentences = tokenizer([x for x in data["text"].values])
-        # embedder = embedder(tokenized_sentences)
+
         indxs = np.arange(N)
         indxs = np.random.permutation(indxs)
         l_split, r_split = int(train_size * N), int((train_size + val_size) * N)
@@ -37,18 +38,14 @@ class Pheme:
         val_indxs = indxs[l_split:r_split]
         test_indxs = indxs[r_split:]
 
-        twids, embedding, labels = (
-            data["tweet_id"].values,
-            embedder(tokenized_sentences),
-            data["veracity"].values,
-        )
-        # train = PhemeDataset(
-        #     twids[train_indxs], embedding[train_indxs], labels[train_indxs]
-        # )
-        # val = PhemeDataset(twids[val_indxs], embedding[val_indxs], labels[val_indxs])
-        # test = PhemeDataset(
-        #     twids[test_indxs], embedding[test_indxs], labels[test_indxs]
-        # )
+        tweets = data["text"].values
+        if attack is not None:
+            tweets = attack(tweets, np.append(val_indxs, test_indxs))
+        tokenized_sentences = tokenizer([x for x in data["text"].values])
+
+        labels = data["veracity"].values
+        #  = embedder(tokenized_sentences)
+
         train = PhemeDataset(train_indxs, embedding[train_indxs], labels[train_indxs])
         val = PhemeDataset(val_indxs, embedding[val_indxs], labels[val_indxs])
         test = PhemeDataset(test_indxs, embedding[test_indxs], labels[test_indxs])
