@@ -154,6 +154,7 @@ class RNN(nn.Module):
 class CNN(nn.Module):
     def __init__(
         self,
+        tokenizer: Tokenizer,
         conv_channels: List[int],
         output_dim: int,
         kernel_sizes: List[int],

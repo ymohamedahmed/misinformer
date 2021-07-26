@@ -75,7 +75,7 @@ def main():
         )
 
         for j in range(3):
-            wandb.init(project="metaphor", entity="youmed")
+            wandb.init(project="metaphor", entity="youmed", reinit=True)
             args[i][j]["tokenizer"] = tokenizer
             config = wandb.config
             config.args = args[i][j]
