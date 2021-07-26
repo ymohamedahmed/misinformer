@@ -35,25 +35,26 @@ def main():
     pheme_path = os.path.join(
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
     )
-    pheme = Pheme(
-        file_path=pheme_path, tokenizer=lambda x: x, embedder=lambda x: x
-    )
-    val_sentences = [pheme.data['text'].values[i] for i in pheme.val_indxs]
-    labels = [pheme.data['veracity'].values[i] for i in pheme.val_indxs] # shape: len(val_sentences)
+    pheme = Pheme(file_path=pheme_path, tokenizer=lambda x: x, embedder=lambda x: x)
+    val_sentences = [pheme.data["text"].values[i] for i in pheme.val_indxs]
+    labels = [
+        pheme.data["veracity"].values[i] for i in pheme.val_indxs
+    ]  # shape: len(val_sentences)
     embedding = [Bert, Glove]
     tokenizers = [CustomBertTokenizer, StandardTokenizer]
     for i in range(2):
-        tokenizer = tokenizers[i]() 
+        tokenizer = tokenizers[i]()
         embedding = embeddings[i](tokenizer=tokenizer)
         for j in range(3):
-            args[i][j]['tokenizer'] = tokenizer
+            args[i][j]["tokenizer"] = tokenizer
             model = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
             model.load_state_dict(torch.load(PATH + file_names[i][j]))
-            syn = KSynonymAttack(k=5
-                embedding=embedding,
-                tokenizer=tokenizer,
-                model=model)
+            syn = KSynonymAttack(
+                k=5, embedding=embedding, tokenizer=tokenizer, model=model
+            )
 
-            predictions = syn.attack(val_sentences) # shape: attempts x len(val_sentences)
-            accuracy = (1.*torch.eq(labels,predictions)).min(dim=0)[0].mean()
+            predictions = syn.attack(
+                val_sentences
+            )  # shape: attempts x len(val_sentences)
+            accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
             print(f"new accuracy: {accuracy}")
