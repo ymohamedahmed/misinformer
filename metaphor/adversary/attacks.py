@@ -67,24 +67,22 @@ class KSynonymAttack(Attack):
         for sentence in sentences:
             sentence = [x for x in tokenize(sentence.lower())]
             for i in range(self.attempts):
-                # verify that the model has all the tokens chosen to replace
-                all_present = False
-                while not (all_present):
-                    indxs = np.random.choice(len(sentence), size=self.k)
-                    all_present = True
-                    for j in indxs:
-                        try:
-                            self.synonym_model.get_index(sentence[j])
-                        except KeyError:
-                            all_present = False
-                            pass
-
+                indxs = np.random.choice(len(sentence), size=self.k)
                 for j in indxs:
                     new_sent = sentence.copy()
-                    synonyms = [
-                        x[0]
-                        for x in self.synonym_model.most_similar(sentence[j])[: self.N]
-                    ]
+                    # if the words isn't in the embedding space don't replace it
+                    synonyms = [sentence[j]]
+                    try:
+                        self.synonym_model.get_index(sentence[j])
+                        synonyms = [
+                            x[0]
+                            for x in self.synonym_model.most_similar(sentence[j])[
+                                : self.N
+                            ]
+                        ]
+                    except KeyError:
+                        pass
+
                     new_sent[j] = np.random.choice(synonyms)
                 attacked_sentences.append(" ".join(new_sent))
 
