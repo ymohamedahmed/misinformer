@@ -4,6 +4,7 @@ import numpy as np
 from typing import List
 from metaphor.models.common.tokenize import Tokenizer
 import gensim.downloader as api
+from gensim.utils import tokenize
 
 """
 An attack is formulated as a function on tokenized sentences and indices
@@ -64,16 +65,14 @@ class KSynonymAttack(Attack):
         attacked_sentences = []
         # indices of words to substitute
         for sentence in sentences:
-            sentence = sentence.split(" ")
+            sentence = [x for x in tokenize(sentence.lower())]
             for i in range(self.attempts):
                 indxs = np.random.choice(len(sentence), size=self.k)
                 for j in indxs:
                     new_sent = sentence.copy()
                     synonyms = [
                         x[0]
-                        for x in self.synonym_model.most_similar(sentence[j].lower())[
-                            : self.N
-                        ]
+                        for x in self.synonym_model.most_similar(sentence[j])[: self.N]
                     ]
                     new_sent[j] = np.random.choice(synonyms)
                 attacked_sentences.append(" ".join(new_sent))
@@ -87,7 +86,7 @@ class KSynonymAttack(Attack):
             predictions[start:end] = torch.argmax(y, dim=1)
 
         predictions = predictions.reshape((self.attempts, len(sentences)))
-        return predictions
+        return attacked_sentences, predictions
 
         # embed the new sentence and evaluate on model
         # if there's a change in classication then break

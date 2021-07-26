@@ -59,7 +59,7 @@ def main():
                 k=5, embedding=embedding, tokenizer=tokenizer, model=model
             )
 
-            predictions = syn.attack(
+            sentences, predictions = syn.attack(
                 val_sentences
             )  # shape: attempts x len(val_sentences)
             accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
