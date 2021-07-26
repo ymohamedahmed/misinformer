@@ -13,6 +13,7 @@ from metaphor.models.common import (
 )
 from metaphor.utils.trainer import ClassifierTrainer
 from metaphor.data.loading.data_loader import Pheme
+from metaphor.adversary.attacks import KSynonymAttack
 import metaphor.experiments.supervised_baselines
 import os
 import torch
@@ -32,15 +33,20 @@ def main():
     # evaluate model on the 'attacked' validation set
     args = metaphor.experiments.supervised_baselines.args
     layers = metaphor.experiments.supervised_baselines.layers
+    models = metaphor.experiments.supervised_baselines.models
     pheme_path = os.path.join(
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
     )
-    pheme = Pheme(file_path=pheme_path, tokenizer=lambda x: x, embedder=lambda x: x)
+    pheme = Pheme(
+        file_path=pheme_path,
+        tokenizer=lambda x: x,
+        embedder=lambda x: torch.zeros((len(x), 200)),
+    )
     val_sentences = [pheme.data["text"].values[i] for i in pheme.val_indxs]
     labels = [
         pheme.data["veracity"].values[i] for i in pheme.val_indxs
     ]  # shape: len(val_sentences)
-    embedding = [Bert, Glove]
+    embeddings = [Bert, Glove]
     tokenizers = [CustomBertTokenizer, StandardTokenizer]
     for i in range(2):
         tokenizer = tokenizers[i]()
@@ -58,3 +64,7 @@ def main():
             )  # shape: attempts x len(val_sentences)
             accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
             print(f"new accuracy: {accuracy}")
+
+
+if __name__ == "__main__":
+    main()

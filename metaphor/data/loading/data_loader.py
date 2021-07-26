@@ -58,7 +58,6 @@ class Pheme:
     def _filter_dataset(self, data: pd.DataFrame) -> pd.DataFrame:
         # remove unwanted datapoints
         return data.dropna()
-        # return data.loc[[x is not None for x in data["veracity"]]]
 
     def _preprocess_text(self, tweets: List[str]) -> List[str]:
         # preprocess tweet data: remove URLs from tweets
