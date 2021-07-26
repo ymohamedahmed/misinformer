@@ -76,10 +76,10 @@ def main():
 
         for j in range(3):
             wandb.init(project="metaphor", entity="youmed")
+            args[i][j]["tokenizer"] = tokenizer
             config = wandb.config
             config.args = args[i][j]
             config.layers = layers[i][j]
-            args[i][j]["tokenizer"] = tokenizer
             classifier = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
             wandb.watch(classifier)
             classifier.to(device)
