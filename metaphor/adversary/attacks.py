@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 from typing import List
 from metaphor.models.common.tokenize import Tokenizer
-
+import gensim.downloader as api
 
 """
 An attack is formulated as a function on tokenized sentences and indices
@@ -46,6 +46,8 @@ class KSynonymAttack(Attack):
         self.attempts = attempts
         self.batch_size = batch_size
         self.N = N
+        self.synonym_model = api.load("glove-wiki-gigaword-300")
+        self.tokenizer = tokenizer
 
     def attack(self, sentences: List[str], labels: List[int]) -> List[str]:
         """
@@ -56,26 +58,33 @@ class KSynonymAttack(Attack):
         """
         predictions = torch.zeros((self.attempts, len(sentences)))
         attacked_sentences = []
-        for start in range(0, len(sentences), self.batch_size):
-            end = min(len(sentences), start + self.batch_size)
-            # indices of words to substitute
-            for sentence in sentences[start:end]:
-                attacked_sen = []
-                sentence = sentence.split(" ")
-                for i in range(self.attempts):
-                    indxs = np.random.choice(len(sentence), size=self.k)
-                    for j in indxs:
-                        new_sent = sentence.copy()
-                        synonyms = [
-                            x[0]
-                            for x in self.embedding.model.most_similar(sentence[j])[
-                                : self.N
-                            ]
+        # for start in range(0, len(sentences), self.batch_size):
+        # end = min(len(sentences), start + self.batch_size)
+        # indices of words to substitute
+        for sentence in sentences:
+            # attacked_sen = []
+            sentence = sentence.split(" ")
+            for i in range(self.attempts):
+                indxs = np.random.choice(len(sentence), size=self.k)
+                for j in indxs:
+                    new_sent = sentence.copy()
+                    synonyms = [
+                        x[0]
+                        for x in self.synonym_model.most_similar(sentence[j].lower())[
+                            : self.N
                         ]
-                        new_sent[j] = np.random.choice(synonyms)
-                    attacked_sen.append(new_sent)
-                attacked_sentences.append(attacked_sen)
-        print(attacked_sentences)
+                    ]
+                    new_sent[j] = np.random.choice(synonyms)
+                attacked_sentences.append(" ".join(new_sent))
+
+            # attacked_sentences.append(attacked_sen)
+        # print(attacked_sentences)
+        tokenized_sentences = self.tokenizer(attacked_sentences)
+        embedding = self.embedding(tokenized_sentences)
+
+        for x in embedding:
+            print(x)
+
         # embed the new sentence and evaluate on model
         # if there's a change in classication then break
         # tokens = self.tokenizer([sentence, new_sent])

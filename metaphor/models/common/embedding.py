@@ -59,10 +59,10 @@ class Glove(nn.Module):
         super().__init__()
         self._tokenizer = tokenizer
         self._embed = None
-
-    def _construct_embedding(self):
         print("Downloading glove twitter vectors")
         self.model = api.load("glove-twitter-200")
+
+    def _construct_embedding(self):
         embedding_dim = self.model.vector_size
         OOV = 0
         # randomly initialise OOV tokens between -1 and 1

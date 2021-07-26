@@ -38,13 +38,10 @@ class Pheme:
         val_indxs = indxs[l_split:r_split]
         test_indxs = indxs[r_split:]
 
-        tweets = data["text"].values
-        if attack is not None:
-            tweets = attack(tweets, np.append(val_indxs, test_indxs))
         tokenized_sentences = tokenizer([x for x in data["text"].values])
 
         labels = data["veracity"].values
-        #  = embedder(tokenized_sentences)
+        embedding = embedder(tokenized_sentences)
 
         train = PhemeDataset(train_indxs, embedding[train_indxs], labels[train_indxs])
         val = PhemeDataset(val_indxs, embedding[val_indxs], labels[val_indxs])
