@@ -55,9 +55,12 @@ def main():
             args[i][j]["tokenizer"] = tokenizer
             model = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
             model.load_state_dict(torch.load(PATH + file_names[i][j]))
+            print("Loaded model")
             syn = KSynonymAttack(
                 k=5, embedding=embedding, tokenizer=tokenizer, model=model
             )
+            print("Constructed attack")
+            print(val_sentences)
 
             sentences, predictions = syn.attack(
                 val_sentences

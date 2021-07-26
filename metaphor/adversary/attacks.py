@@ -5,6 +5,7 @@ from typing import List
 from metaphor.models.common.tokenize import Tokenizer
 import gensim.downloader as api
 from gensim.utils import tokenize
+from tqdm import tqdm
 
 """
 An attack is formulated as a function on tokenized sentences and indices
@@ -64,7 +65,7 @@ class KSynonymAttack(Attack):
         predictions = torch.zeros((self.attempts * len(sentences)))
         attacked_sentences = []
         # indices of words to substitute
-        for sentence in sentences:
+        for sentence in tqdm(sentences):
             sentence = [x for x in tokenize(sentence.lower())]
             for i in range(self.attempts):
                 indxs = np.random.choice(len(sentence), size=self.k)
@@ -85,13 +86,14 @@ class KSynonymAttack(Attack):
 
                     new_sent[j] = np.random.choice(synonyms)
                 attacked_sentences.append(" ".join(new_sent))
-
+        print("Finished computing attacked sentences")
         tokenized_sentences = self.tokenizer(attacked_sentences)
         embedding = self.embedding(tokenized_sentences).to(self.device)
 
+        print("Attacking the model")
         for start in range(0, len(sentences) * self.attempts, self.batch_size):
             end = min(len(sentences), start + self.batch_size)
-            y = self.model(embedding[start:end])
+            y = self.model(embedding[start:end], np.arange(start, end))
             predictions[start:end] = torch.argmax(y, dim=1)
 
         predictions = predictions.reshape((self.attempts, len(sentences)))
