@@ -50,8 +50,8 @@ class KSynonymAttack(Attack):
         self.N = N
         self.synonym_model = api.load("glove-wiki-gigaword-300")
         self.device = device
-        self.attacked_sentences = self._attack_sentences(sentences)
         self.precomputed_sentence_path = precomputed_sentence_path
+        self.attacked_sentences = self._attack_sentences(sentences)
 
     def _attack_sentences(self, sentences: List[str]):
         if self.precomputed_sentence_path is not None:
@@ -66,8 +66,8 @@ class KSynonymAttack(Attack):
             sentence = [x for x in tokenize(sentence.lower())]
             for i in range(self.attempts):
                 indxs = np.random.choice(len(sentence), size=self.k)
+                new_sent = sentence.copy()
                 for j in indxs:
-                    new_sent = sentence.copy()
                     # if the words isn't in the embedding space don't replace it
                     synonyms = [sentence[j]]
                     try:
