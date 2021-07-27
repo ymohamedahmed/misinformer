@@ -25,9 +25,7 @@ class KSynonymAttack(Attack):
     def __init__(
         self,
         k: int,
-        embedding,
-        tokenizer: Tokenizer,
-        model: nn.Module,
+        sentences: List[str]
         attempts: int = 5,
         N: int = 5,
         batch_size: int = 128,
@@ -46,23 +44,14 @@ class KSynonymAttack(Attack):
         """
         np.random.seed(0)
         self.k = k
-        self.embedding = embedding
-        self.model = model
         self.attempts = attempts
         self.batch_size = batch_size
         self.N = N
         self.synonym_model = api.load("glove-wiki-gigaword-300")
-        self.tokenizer = tokenizer
         self.device = device
+        self.attacked_sentences = self._attack_sentences(sentences)
 
-    def attack(self, sentences: List[str]) -> List[str]:
-        """
-        Takes a list of sentences of the form: ["The Quick brown fox", "jumps over", "the lazy dog", ...]
-        and 'attacks' them in batches by selecting synonyms from the embedding
-        Returns predictions and the attacked sentences
-        Logs to a file: all the attacked sentences, predictions by the model on each and the true labels
-        """
-        predictions = torch.zeros((self.attempts * len(sentences)))
+    def _attack_sentences(self, sentences: List[str]):
         attacked_sentences = []
         # indices of words to substitute
         for sentence in tqdm(sentences):
@@ -86,14 +75,26 @@ class KSynonymAttack(Attack):
 
                     new_sent[j] = np.random.choice(synonyms)
                 attacked_sentences.append(" ".join(new_sent))
+        return attacked_sentences
+
+    def attack(
+        self, model: nn.Module, tokenizer, embedding
+    ) -> List[str]:
+        """
+        Takes a list of sentences of the form: ["The Quick brown fox", "jumps over", "the lazy dog", ...]
+        and 'attacks' them in batches by selecting synonyms from the embedding
+        Returns predictions and the attacked sentences
+        Logs to a file: all the attacked sentences, predictions by the model on each and the true labels
+        """
+        predictions = torch.zeros((self.attempts * len(sentences)))
         print("Finished computing attacked sentences")
-        tokenized_sentences = self.tokenizer(attacked_sentences)
-        embedding = self.embedding(tokenized_sentences).to(self.device)
+        tokenized_sentences = tokenizer(attacked_sentences)
+        embedding = embedding(tokenized_sentences).to(self.device)
 
         print("Attacking the model")
         for start in range(0, len(sentences) * self.attempts, self.batch_size):
             end = min(len(sentences), start + self.batch_size)
-            y = self.model(embedding[start:end], np.arange(start, end))
+            y = model(embedding[start:end], np.arange(start, end))
             predictions[start:end] = torch.argmax(y, dim=1)
 
         predictions = predictions.reshape((self.attempts, len(sentences)))

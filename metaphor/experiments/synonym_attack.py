@@ -48,6 +48,7 @@ def main():
     ]  # shape: len(val_sentences)
     embeddings = [Bert, Glove]
     tokenizers = [CustomBertTokenizer, StandardTokenizer]
+    syn = KSynonymAttack(k=5)
     for i in range(2):
         tokenizer = tokenizers[i]()
         embedding = embeddings[i](tokenizer=tokenizer)
@@ -56,14 +57,11 @@ def main():
             model = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
             model.load_state_dict(torch.load(PATH + file_names[i][j]))
             print("Loaded model")
-            syn = KSynonymAttack(
-                k=5, embedding=embedding, tokenizer=tokenizer, model=model
-            )
             print("Constructed attack")
             print(val_sentences)
 
             sentences, predictions = syn.attack(
-                val_sentences
+                val_sentences, model
             )  # shape: attempts x len(val_sentences)
             accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
             print(f"new accuracy: {accuracy}")
