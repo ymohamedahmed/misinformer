@@ -21,14 +21,12 @@ import wandb
 
 # load each checkpoint of the supervised models
 def main():
-    PATH = "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/"
+    CHECKPOINT_PATH = "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/"
+    ATTACK_PATH = "/content/drive/My Drive/ucl-msc/dissertation/attacks/"
     file_names = [
         ["bert-mean.npy", "bert-cnn.npy", "bert-rnn.npy"],
         ["glove-mean.npy", "glove-cnn.npy", "glove-rnn.npy"],
     ]
-    # load checkpoint
-
-    # evaluate model on the validation set
 
     # evaluate model on the 'attacked' validation set
     args = metaphor.experiments.supervised_baselines.args
@@ -43,28 +41,34 @@ def main():
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
     val_sentences = [pheme.data["text"].values[i] for i in pheme.val_indxs]
-    labels = [
-        pheme.data["veracity"].values[i] for i in pheme.val_indxs
-    ]  # shape: len(val_sentences)
+    labels = torch.tensor(
+        [pheme.data["veracity"].values[i] for i in pheme.val_indxs]
+    )  # shape: len(val_sentences)
     embeddings = [Bert, Glove]
     tokenizers = [CustomBertTokenizer, StandardTokenizer]
-    syn = KSynonymAttack(k=5)
-    for i in range(2):
-        tokenizer = tokenizers[i]()
-        embedding = embeddings[i](tokenizer=tokenizer)
-        for j in range(3):
-            args[i][j]["tokenizer"] = tokenizer
-            model = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
-            model.load_state_dict(torch.load(PATH + file_names[i][j]))
-            print("Loaded model")
-            print("Constructed attack")
-            print(val_sentences)
+    ATTEMPTS = 5
+    # preds = torch.zeros((7,6,ATTEMPTS*))
+    for k in range(7):
+        syn = KSynonymAttack(
+            precomputed_sentence_path=ATTACK_PATH + f"synonym_attack_{k}.txt",
+            sentences=val_sentences,
+        )
+        for i in range(2):
+            tokenizer = tokenizers[i]()
+            embedding = embeddings[i](tokenizer=tokenizer)
+            for j in range(3):
+                args[i][j]["tokenizer"] = tokenizer
+                model = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
+                model.load_state_dict(torch.load(CHECKPOINT_PATH + file_names[i][j]))
+                print("Loaded model")
+                print("Constructed attack")
+                print(val_sentences)
 
-            sentences, predictions = syn.attack(
-                val_sentences, model
-            )  # shape: attempts x len(val_sentences)
-            accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
-            print(f"new accuracy: {accuracy}")
+                sentences, predictions = syn.attack(
+                    model, tokenizer, embedding
+                )  # shape: attempts x len(val_sentences)
+                accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
+                print(f"new accuracy: {accuracy}")
 
 
 if __name__ == "__main__":

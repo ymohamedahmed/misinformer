@@ -25,13 +25,14 @@ class KSynonymAttack(Attack):
     def __init__(
         self,
         k: int,
-        sentences: List[str]
+        sentences: List[str],
         attempts: int = 5,
-        N: int = 5,
+        N: int = 3,
         batch_size: int = 128,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
+        precomputed_sentence_path: str = None,
     ):
         """
         k: the number of words to substitute
@@ -50,9 +51,16 @@ class KSynonymAttack(Attack):
         self.synonym_model = api.load("glove-wiki-gigaword-300")
         self.device = device
         self.attacked_sentences = self._attack_sentences(sentences)
+        self.precomputed_sentence_path = precomputed_sentence_path
 
     def _attack_sentences(self, sentences: List[str]):
+        if self.precomputed_sentence_path is not None:
+            with open(self.precomputed_sentence_path) as f:
+                lines = f.readlines()
+                return [x.strip() for x in lines]
+
         attacked_sentences = []
+        self.num_sentences = len(sentences)
         # indices of words to substitute
         for sentence in tqdm(sentences):
             sentence = [x for x in tokenize(sentence.lower())]
@@ -76,33 +84,3 @@ class KSynonymAttack(Attack):
                     new_sent[j] = np.random.choice(synonyms)
                 attacked_sentences.append(" ".join(new_sent))
         return attacked_sentences
-
-    def attack(
-        self, model: nn.Module, tokenizer, embedding
-    ) -> List[str]:
-        """
-        Takes a list of sentences of the form: ["The Quick brown fox", "jumps over", "the lazy dog", ...]
-        and 'attacks' them in batches by selecting synonyms from the embedding
-        Returns predictions and the attacked sentences
-        Logs to a file: all the attacked sentences, predictions by the model on each and the true labels
-        """
-        predictions = torch.zeros((self.attempts * len(sentences)))
-        print("Finished computing attacked sentences")
-        tokenized_sentences = tokenizer(attacked_sentences)
-        embedding = embedding(tokenized_sentences).to(self.device)
-
-        print("Attacking the model")
-        for start in range(0, len(sentences) * self.attempts, self.batch_size):
-            end = min(len(sentences), start + self.batch_size)
-            y = model(embedding[start:end], np.arange(start, end))
-            predictions[start:end] = torch.argmax(y, dim=1)
-
-        predictions = predictions.reshape((self.attempts, len(sentences)))
-        return attacked_sentences, predictions
-
-        # embed the new sentence and evaluate on model
-        # if there's a change in classication then break
-        # tokens = self.tokenizer([sentence, new_sent])
-        # embedding = self.embedding(self.tokenizer)
-        # ys = self.model(embedding)
-        # print(ys)
