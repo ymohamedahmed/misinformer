@@ -77,6 +77,7 @@ def main():
                 preds[k][(i * 3) + j] = predictions.reshape(
                     (ATTEMPTS, len(val_sentences))
                 )
+    torch.save(preds, ATTACK_PATH + "synonym_attack_preds.npy")
 
 
 if __name__ == "__main__":
