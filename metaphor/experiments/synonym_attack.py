@@ -72,11 +72,10 @@ def main():
                     tokenizer,
                     embedding,
                 )  # shape: attempts x len(val_sentences)
+                predictions = predictions.reshape((ATTEMPTS, len(val_sentences)))
                 accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
                 print(f"new accuracy: {accuracy}")
-                preds[k][(i * 3) + j] = predictions.reshape(
-                    (ATTEMPTS, len(val_sentences))
-                )
+                preds[k][(i * 3) + j] = predictions
     torch.save(preds, ATTACK_PATH + "synonym_attack_preds.npy")
 
 
