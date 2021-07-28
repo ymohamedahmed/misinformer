@@ -50,6 +50,7 @@ def main():
     preds = torch.zeros((7, 6, ATTEMPTS, len(val_sentences)))
     for k in range(7):
         syn = KSynonymAttack(
+            k=k,
             precomputed_sentence_path=ATTACK_PATH + f"synonym_attack_{k}.txt",
             sentences=val_sentences,
         )
