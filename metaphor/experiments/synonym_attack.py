@@ -47,7 +47,7 @@ def main():
     embeddings = [Bert, Glove]
     tokenizers = [CustomBertTokenizer, StandardTokenizer]
     ATTEMPTS = 5
-    # preds = torch.zeros((7,6,ATTEMPTS*))
+    preds = torch.zeros((7, 6, ATTEMPTS, len(val_sentences)))
     for k in range(7):
         syn = KSynonymAttack(
             precomputed_sentence_path=ATTACK_PATH + f"synonym_attack_{k}.txt",
@@ -64,11 +64,17 @@ def main():
                 print("Constructed attack")
                 print(val_sentences)
 
-                sentences, predictions = syn.attack(
-                    model, tokenizer, embedding
+                predictions = metaphor.utils.utils.predict(
+                    syn.attacked_sentences,
+                    model,
+                    tokenizer,
+                    embedding,
                 )  # shape: attempts x len(val_sentences)
                 accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
                 print(f"new accuracy: {accuracy}")
+                preds[k][(i * 3) + j] = predictions.reshape(
+                    (ATTEMPTS, len(val_sentences))
+                )
 
 
 if __name__ == "__main__":
