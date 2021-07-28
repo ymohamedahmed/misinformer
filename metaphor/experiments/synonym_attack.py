@@ -72,7 +72,7 @@ def main():
                     tokenizer,
                     embedding,
                 )  # shape: attempts x len(val_sentences)
-                predictions = predictions.reshape((ATTEMPTS, len(val_sentences)))
+                predictions = predictions.reshape((len(val_sentences), ATTEMPTS)).T
                 accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
                 print(f"new accuracy: {accuracy}")
                 preds[k][(i * 3) + j] = predictions
