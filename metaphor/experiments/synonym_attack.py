@@ -12,6 +12,7 @@ from metaphor.models.common import (
     MisinformationModel,
 )
 from metaphor.utils.trainer import ClassifierTrainer
+from metaphor.utils.utils import predict
 from metaphor.data.loading.data_loader import Pheme
 from metaphor.adversary.attacks import KSynonymAttack
 import metaphor.experiments.supervised_baselines
@@ -65,7 +66,7 @@ def main():
                 print("Constructed attack")
                 print(val_sentences)
 
-                predictions = metaphor.utils.utils.predict(
+                predictions = predict(
                     syn.attacked_sentences,
                     model,
                     tokenizer,
