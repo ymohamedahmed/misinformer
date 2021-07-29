@@ -2,9 +2,15 @@ import torch
 
 
 def predict(sentences, model, tokenizer, embedding, batch_size=128, device=None):
+    return forward(sentences, model, tokenizer, embedding, batch_size, device).argmax(
+        dim=1
+    )
+
+
+def forward(sentences, model, tokenizer, embedding, batch_size=128, device=None):
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    predictions = torch.zeros((len(sentences)))
+    logits = torch.zeros((len(sentences), 3))
     tokenized_sentences = tokenizer(sentences)
     embedding = embedding(tokenized_sentences).to(device)
 
@@ -13,6 +19,6 @@ def predict(sentences, model, tokenizer, embedding, batch_size=128, device=None)
     for start in range(0, len(sentences), batch_size):
         end = min(len(sentences), start + batch_size)
         y = model(embedding[start:end], torch.arange(start, end).to(device))
-        predictions[start:end] = torch.argmax(y, dim=1)
+        logits[start:end] = torch.softmax(y, dim=1)
 
-    return predictions
+    return logits
