@@ -14,7 +14,7 @@ from metaphor.models.common import (
 from metaphor.utils.trainer import ClassifierTrainer
 from metaphor.utils.utils import predict
 from metaphor.data.loading.data_loader import Pheme
-from metaphor.adversary.attacks import KSynonymAttack
+from metaphor.adversary.attacks import KSynonymAttack, ParaphraseAttack
 import metaphor.experiments.supervised_baselines
 import os
 import torch
@@ -48,11 +48,12 @@ def main():
     embeddings = [Bert, Glove]
     tokenizers = [CustomBertTokenizer, StandardTokenizer]
     ATTEMPTS = 5
+    """
     preds = torch.zeros((7, 6, ATTEMPTS, len(val_sentences)))
     for k in range(7):
         syn = KSynonymAttack(
             k=k,
-            precomputed_sentence_path=ATTACK_PATH + f"synonym_attack_{k}.txt",
+            path=ATTACK_PATH + f"synonym_attack_{k}.txt",
             sentences=val_sentences,
         )
         for i in range(2):
@@ -77,6 +78,34 @@ def main():
                 print(f"new accuracy: {accuracy}")
                 preds[k][(i * 3) + j] = predictions
     torch.save(preds, ATTACK_PATH + "synonym_attack_preds.npy")
+    """
+    preds = torch.zeros((6, ATTEMPTS, len(val_sentences)))
+    syn = ParaphraseAttack(
+        path=ATTACK_PATH + "paraphrase_attack.txt",
+        sentences=val_sentences,
+    )
+    for i in range(2):
+        tokenizer = tokenizers[i]()
+        embedding = embeddings[i](tokenizer=tokenizer)
+        for j in range(3):
+            args[i][j]["tokenizer"] = tokenizer
+            model = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
+            model.load_state_dict(torch.load(CHECKPOINT_PATH + file_names[i][j]))
+            print("Loaded model")
+            print("Constructed attack")
+            print(val_sentences)
+
+            predictions = predict(
+                syn.attacked_sentences,
+                model,
+                tokenizer,
+                embedding,
+            )  # shape: attempts x len(val_sentences)
+            predictions = predictions.reshape((len(val_sentences), ATTEMPTS)).T
+            accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
+            print(f"new accuracy: {accuracy}")
+            preds[(i * 3) + j] = predictions
+    torch.save(preds, ATTACK_PATH + "paraphrase_attack_preds.npy")
 
 
 if __name__ == "__main__":

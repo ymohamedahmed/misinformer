@@ -51,7 +51,7 @@ class ParaphraseAttack(Attack):
         self.attempts = attempts
         self.attacked_sentences = self.attack(sentences)
 
-    def attack(sentences: List[str]):
+    def attack(self, sentences: List[str]):
         if self.path is not None:
             with open(self.path) as f:
                 lines = f.readlines()
