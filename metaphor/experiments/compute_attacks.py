@@ -1,4 +1,8 @@
-from metaphor.adversary.attacks import KSynonymAttack
+from metaphor.adversary.attacks import (
+    KSynonymAttack,
+    ParaphraseAttack,
+    ConcatenationAttack,
+)
 from pathlib import Path
 import os
 from metaphor.data.loading.data_loader import Pheme
@@ -16,6 +20,7 @@ def main():
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
     val_sentences = [pheme.data["text"].values[i] for i in pheme.val_indxs]
+    """
     for k in range(7):
         asen = KSynonymAttack(
             k=k,
@@ -24,6 +29,11 @@ def main():
         with open(PATH + f"synonym_attack_{k}.txt", "w") as f:
             for sen in asen:
                 f.write("%s\n" % sen)
+    """
+    asen = ParaphraseAttack(sentences=val_sentences).attacked_sentences
+    with open(PATH + "paraphrase_attack.txt", "w") as f:
+        for sen in asen:
+            f.write("%s\n" % sen)
 
 
 if __name__ == "__main__":

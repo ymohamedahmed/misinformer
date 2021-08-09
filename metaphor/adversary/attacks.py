@@ -6,6 +6,7 @@ from metaphor.models.common.tokenize import Tokenizer
 import gensim.downloader as api
 from gensim.utils import tokenize
 from tqdm import tqdm
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 """
 An attack is formulated as a function on tokenized sentences and indices
@@ -15,7 +16,74 @@ in which the indices would contain the relevant val. and test. indices
 
 
 class Attack:
-    pass
+    def __init__(self, path):
+        pass
+
+
+class ConcatenationAttack(Attack):
+    def __init__(
+        self,
+        sentences: List[str],
+        attack: str,
+    ):
+        self.attack = attack
+        self.attacked_sentences = self.attack(sentences)
+
+    def attack(self, sentences):
+        return [x + " " + self.attack for x in sentences]
+
+
+class ParaphraseAttack(Attack):
+    def __init__(
+        self,
+        sentences: List[str],
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+        attempts: int = 5,
+        path: str = None,
+    ):
+        self.tokenizer = AutoTokenizer.from_pretrained("Vamsi/T5_Paraphrase_Paws")
+        self.path = path
+        self.model = AutoModelForSeq2SeqLM.from_pretrained("Vamsi/T5_Paraphrase_Paws")
+        self.device = device
+        self.model.to(device)
+        self.attempts = attempts
+        self.attacked_sentences = self.attack(sentences)
+
+    def attack(sentences: List[str]):
+        if self.path is not None:
+            with open(self.path) as f:
+                lines = f.readlines()
+                return [x.strip() for x in lines]
+        attacked_sentences = []
+        for sentence in sentences:
+            encoding = self.tokenizer.encode_plus(
+                sentence, pad_to_max_length=True, return_tensors="pt"
+            )
+            input_ids, attention_masks = encoding["input_ids"].to("cuda"), encoding[
+                "attention_mask"
+            ].to(self.device)
+
+            outputs = self.model.generate(
+                input_ids=input_ids,
+                attention_mask=attention_masks,
+                max_length=256,
+                do_sample=True,
+                top_k=200,
+                top_p=0.95,
+                early_stopping=True,
+                num_return_sequences=self.attempts,
+            )
+
+            lines = []
+            for output in outputs:
+                line = self.tokenizer.decode(
+                    output, skip_special_tokens=True, clean_up_tokenization_spaces=True
+                )
+                attacked_sentences.append(line)
+
+        return attacked_sentences
 
 
 class KSynonymAttack(Attack):
@@ -32,7 +100,7 @@ class KSynonymAttack(Attack):
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
-        precomputed_sentence_path: str = None,
+        path: str = None,
     ):
         """
         k: the number of words to substitute
@@ -46,16 +114,15 @@ class KSynonymAttack(Attack):
         np.random.seed(0)
         self.k = k
         self.attempts = attempts
-        self.batch_size = batch_size
         self.N = N
         self.synonym_model = api.load("glove-wiki-gigaword-300")
         self.device = device
-        self.precomputed_sentence_path = precomputed_sentence_path
-        self.attacked_sentences = self._attack_sentences(sentences)
+        self.path = path
+        self.attacked_sentences = self.attack(sentences)
 
-    def _attack_sentences(self, sentences: List[str]):
-        if self.precomputed_sentence_path is not None:
-            with open(self.precomputed_sentence_path) as f:
+    def attack(self, sentences: List[str]):
+        if self.path is not None:
+            with open(self.path) as f:
                 lines = f.readlines()
                 return [x.strip() for x in lines]
 

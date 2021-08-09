@@ -60,7 +60,7 @@ class Pheme:
         return data.dropna()
 
     def _preprocess_text(self, tweets: List[str]) -> List[str]:
-        # preprocess tweet data: remove URLs from tweets
+        # preprocess tweet data: remove URLs from tweets, remove hashtags and @
         regex = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
         return [re.sub(regex, "", text).strip() for text in tweets]
 

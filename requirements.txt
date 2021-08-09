@@ -1,6 +1,7 @@
-torch==1.8.1
 wandb==0.11.0
 pandas==1.2.4
+tqdm==4.61.1
 transformers==4.7.0
 numpy==1.20.2
 gensim==4.0.1
+torch==1.8.1
