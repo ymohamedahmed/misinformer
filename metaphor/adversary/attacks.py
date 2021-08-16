@@ -20,6 +20,12 @@ class Attack:
         pass
 
 
+class LimeConcatenationAttack(Attack):
+    """"""
+
+    pass
+
+
 class ConcatenationAttack(Attack):
     def __init__(
         self,

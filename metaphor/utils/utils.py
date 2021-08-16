@@ -9,7 +9,6 @@ def forward(sentences, model, tokenizer, embedding, batch_size=128, device=None)
     embedding = embedding(tokenized_sentences).to(device)
 
     model.to(device)
-    print("Attacking the model")
     for start in range(0, len(sentences), batch_size):
         end = min(len(sentences), start + batch_size)
         y = model(embedding[start:end], torch.arange(start, end).to(device))

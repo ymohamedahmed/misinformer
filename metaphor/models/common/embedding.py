@@ -204,3 +204,31 @@ class MLP(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
+
+
+class ExpertMixture(nn.Module):
+    def __init__(self, n_topics: int, model_args, model, topic_selector):
+        self.topic_selector = topic_selector
+        self.models = [model(**model_args) for _ in range(n_topics)]
+        self.n_topics = n_topics
+
+    def forward(self, x):
+        topics = self.topic_selector(x).argmax(dim=1)
+        preds = torch.zeros(x.shape[0], 3)
+        for i in range(topics):
+            preds[topics == i] = self.models[i](x[topics == i])
+        return preds
+
+    def fit(self, trainer, topic_classification_loader, misinformation_loader):
+        trainer.fit(
+            self.topic_selector,
+            topic_classification_loader.train,
+            topic_classification_loader.val,
+        )
+        for i in range(self.n_topics):
+            # need to fit only to particular topic
+            trainer.fit(
+                self.models[i],
+                misinformation_loader.data[i].train,
+                misinformation_loader.data[i].val,
+            )

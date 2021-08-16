@@ -6,7 +6,6 @@ import torch
 import torch.nn as nn
 from typing import Tuple, List
 import re
-import metaphor.adversary.attacks
 
 
 class Pheme:
@@ -16,44 +15,44 @@ class Pheme:
         tokenizer: StandardTokenizer,
         embedder: nn.Module,
         batch_size: int = 128,
-        seed: int = 0,
-        train_size: float = 0.6,
-        val_size: float = 0.2,
-        test_size: float = 0.2,
-        attack: metaphor.adversary.attacks.Attack = None,
+        splits: List[float] = [0.6, 0.2, 0.2],
+        topic=None,
     ):
         if not (os.path.exists(file_path)):
             raise Exception(f"No such path: {file_path}")
-        np.random.seed(seed)
+        np.random.seed(0)
         data = self._filter_dataset(pd.read_csv(file_path))
-        self.data = data
         data["text"] = self._preprocess_text(data["text"])
-        data["veracity"] = self._process_labels(data["veracity"])
+        if topic is not None:
+            topics = sorted(list(set(data["topic"])))
+            data = data.loc[[topics.index(t) == topic for t in data["topic"]]]
+        self.data = data
+        labels = self.labels(data)
         N = len(data["text"].values)
 
-        indxs = np.arange(N)
-        indxs = np.random.permutation(indxs)
-        l_split, r_split = int(train_size * N), int((train_size + val_size) * N)
-        train_indxs = indxs[:l_split]
-        val_indxs = indxs[l_split:r_split]
-        test_indxs = indxs[r_split:]
+        indxs = np.random.permutation(np.arange(N))
+        l_split, r_split = int(splits[0] * N), int((splits[0] + splits[1]) * N)
+
+        self.train_indxs = indxs[:l_split]
+        self.val_indxs = indxs[l_split:r_split]
+        self.test_indxs = indxs[r_split:]
 
         tokenized_sentences = tokenizer([x for x in data["text"].values])
-
-        labels = data["veracity"].values
         embedding = embedder(tokenized_sentences)
 
-        train = PhemeDataset(train_indxs, embedding[train_indxs], labels[train_indxs])
-        val = PhemeDataset(val_indxs, embedding[val_indxs], labels[val_indxs])
-        test = PhemeDataset(test_indxs, embedding[test_indxs], labels[test_indxs])
+        train = PhemeDataset(
+            self.train_indxs, embedding[self.train_indxs], labels[self.train_indxs]
+        )
+        val = PhemeDataset(
+            self.val_indxs, embedding[self.val_indxs], labels[self.val_indxs]
+        )
+        test = PhemeDataset(
+            self.test_indxs, embedding[self.test_indxs], labels[self.test_indxs]
+        )
 
-        self._train_loader = torch.utils.data.DataLoader(train, batch_size=batch_size)
-        self._val_loader = torch.utils.data.DataLoader(val, batch_size=batch_size)
-        self._test_loader = torch.utils.data.DataLoader(test, batch_size=batch_size)
-
-        self.train_indxs = train_indxs
-        self.val_indxs = val_indxs
-        self.test_indxs = test_indxs
+        self.train = torch.utils.data.DataLoader(train, batch_size=batch_size)
+        self.val = torch.utils.data.DataLoader(val, batch_size=batch_size)
+        self.test = torch.utils.data.DataLoader(test, batch_size=batch_size)
 
     def _filter_dataset(self, data: pd.DataFrame) -> pd.DataFrame:
         # remove unwanted datapoints
@@ -64,22 +63,62 @@ class Pheme:
         regex = r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
         return [re.sub(regex, "", text).strip() for text in tweets]
 
-    def _process_labels(self, labels: List[str]) -> List[int]:
+
+class MisinformationPheme(Pheme):
+    def __init__(
+        self,
+        file_path: str,
+        tokenizer: StandardTokenizer,
+        embedder: nn.Module,
+        batch_size: int = 128,
+        splits: List[float] = [0.6, 0.2, 0.2],
+    ):
+        super().__init__(file_path, tokenizer, embedder, batch_size, splits)
+
+    def labels(self, data: pd.DataFrame) -> List[int]:
         # convert labels into integer classes
+        labels = data["veracity"].values
         mapping = {"false": 0, "unverified": 1, "true": 2}
         return [mapping[label] for label in labels]
 
-    @property
-    def train(self):
-        return self._train_loader
 
-    @property
-    def val(self):
-        return self._val_loader
+class PerTopicMisinformation:
+    """
+    A list of datasets per topic of the form [MisinformationPheme(),...,] where each only contains the tweets for a particular topic
+    """
 
-    @property
-    def test(self):
-        return self._test_loader
+    def __init__(
+        self,
+        file_path: str,
+        tokenizer: StandardTokenizer,
+        embedder: nn.Module,
+        batch_size: int = 128,
+        splits: List[float] = [0.6, 0.2, 0.2],
+    ):
+        n_topics = 9
+        self.data = [
+            Pheme(file_path, tokenizer, embedder, label=i) for i in range(n_topics)
+        ]
+
+
+class TopicPheme(Pheme):
+    """
+    Dataset of tweet to topic classification
+    """
+
+    def __init__(
+        self,
+        file_path: str,
+        tokenizer: StandardTokenizer,
+        embedder: nn.Module,
+        batch_size: int = 128,
+        splits: List[float] = [0.6, 0.2, 0.2],
+    ):
+        super().__init__(file_path, tokenizer, embedder, batch_size, splits)
+
+    def labels(self, data: pd.DataFrame) -> List[int]:
+        topics = sorted(list(set(data["topic"])))
+        return [topics.index(x) for x in data["topic"].values]
 
 
 class PhemeDataset(torch.utils.data.Dataset):

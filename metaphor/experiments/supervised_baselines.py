@@ -10,9 +10,10 @@ from metaphor.models.common import (
     CustomBertTokenizer,
     StandardTokenizer,
     MisinformationModel,
+    ExpertMixture,
 )
 from metaphor.utils.trainer import ClassifierTrainer
-from metaphor.data.loading.data_loader import Pheme
+from metaphor.data.loading.data_loader import MisinformationPheme, TopicPheme
 import os
 import torch
 import wandb
@@ -70,7 +71,7 @@ def main():
     )
     for i in range(2):
         tokenizer = tokenizers[i]()
-        data = Pheme(
+        data = MisinformationPheme(
             file_path=pheme_path, tokenizer=tokenizer, embedder=embeddings[i](tokenizer)
         )
 
@@ -93,6 +94,29 @@ def main():
 
             # log results and save model
             torch.save(classifier.state_dict(), PATH + file_names[i][j])
+
+            # train mixture of experts
+            topic_pheme = TopicPheme(
+                file_path=pheme_path,
+                tokenizer=tokenizer,
+                embedder=embeddings[i](tokenizer),
+            )
+
+            # change MLP to classify topics
+            mlp_layers = layers[i][j].copy()
+            mlp_layers.pop()
+            mlp_layers.append(9)
+
+            expert_mixture = ExpertMixture(
+                n_topics=9,
+                model_args=args[i][j],
+                model=models[j],
+                topic_selector=MLP(mlp_layers),
+            )
+            expert_mixture.fit(trainer, topic_pheme, data)
+            torch.save(expert_mixture.state_dict(), PATH + "em-" + file_names[i][j])
+
+    # train each of the models with the defenses
 
 
 if __name__ == "__main__":
