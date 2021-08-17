@@ -100,11 +100,11 @@ def main():
             torch.save(classifier.state_dict(), PATH + file_names[i][j])
 
             # train mixture of experts
-            # topic_pheme = TopicPheme(
-            #     file_path=pheme_path,
-            #     tokenizer=tokenizer,
-            #     embedder=embeddings[i](tokenizer),
-            # )
+            topic_pheme = TopicPheme(
+                file_path=pheme_path,
+                tokenizer=tokenizer,
+                embedder=embeddings[i](tokenizer),
+            )
 
             # change MLP to classify topics
             mlp_layers = layers[i][j].copy()
@@ -123,8 +123,8 @@ def main():
                 topic_selector=MLP(mlp_layers),
             )
             expert_mixture.to(device)
-            # expert_mixture.fit(trainer, topic_pheme, ptm)
-            results = trainer.fit(expert_mixture, data.train, data.val)
+            expert_mixture.fit(trainer, topic_pheme, data.per_topic())
+            # results = trainer.fit(expert_mixture, data.train, data.val)
             print(
                 f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}"
             )

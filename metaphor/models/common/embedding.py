@@ -240,10 +240,11 @@ class ExpertMixture(nn.Module):
             topic_classification_loader.train,
             topic_classification_loader.val,
         )
+        train, val, test = misinformation_loader
         for i in range(self.n_topics):
             # need to fit only to particular topic
             trainer.fit(
                 nn.Sequential(self.agg, self.models[i]),
-                misinformation_loader.data[i].train,
-                misinformation_loader.data[i].val,
+                train[i],
+                val[i],
             )

@@ -17,16 +17,12 @@ class Pheme:
         label_fun,
         batch_size: int = 128,
         splits: List[float] = [0.6, 0.2, 0.2],
-        topic=None,
     ):
         if not (os.path.exists(file_path)):
             raise Exception(f"No such path: {file_path}")
         np.random.seed(0)
         data = self._filter_dataset(pd.read_csv(file_path))
         data["text"] = self._preprocess_text(data["text"])
-        if topic is not None:
-            topics = sorted(list(set(data["topic"])))
-            data = data.loc[[topics.index(t) == topic for t in data["topic"]]]
         self.data = data
         labels = label_fun(data)
         N = len(data["text"].values)
@@ -41,19 +37,61 @@ class Pheme:
         tokenized_sentences = tokenizer([x for x in data["text"].values])
         embedding = embedder(tokenized_sentences)
 
-        train = PhemeDataset(
-            self.train_indxs, embedding[self.train_indxs], labels[self.train_indxs]
+        self.train = torch.utils.data.DataLoader(
+            PhemeDataset(
+                self.train_indxs,
+                embedding[self.train_indxs],
+                labels[self.train_indxs],
+            ),
+            batch_size=batch_size,
         )
-        val = PhemeDataset(
-            self.val_indxs, embedding[self.val_indxs], labels[self.val_indxs]
+        self.val = torch.utils.data.DataLoader(
+            PhemeDataset(
+                self.val_indxs, embedding[self.val_indxs], labels[self.val_indxs]
+            ),
+            batch_size=batch_size,
         )
-        test = PhemeDataset(
-            self.test_indxs, embedding[self.test_indxs], labels[self.test_indxs]
+        self.test = torch.utils.data.DataLoader(
+            PhemeDataset(
+                self.test_indxs, embedding[self.test_indxs], labels[self.test_indxs]
+            ),
+            batch_size=batch_size,
         )
+        self.embedding = embedding
+        self.labels
+        self.batch_size = batch_size
 
-        self.train = torch.utils.data.DataLoader(train, batch_size=batch_size)
-        self.val = torch.utils.data.DataLoader(val, batch_size=batch_size)
-        self.test = torch.utils.data.DataLoader(test, batch_size=batch_size)
+    def per_topic(self):
+        """Return data loaders separated by each topic"""
+        topics = sorted(list(set(self.data["topic"])))
+        # list of indices in each topic
+        topic_indxs = [
+            [
+                i
+                for i in range(len(self.data["topic"]))
+                if topics.index(self.data["topic"][i]) == j
+            ]
+            for j in range(len(topics))
+        ]
+        # rewrite the indices in each fold per-topic i.e. [[# the train indices in the 0th topic], ...]
+
+        def filter_indices(t):
+            return [[y for y in x if y in t] for x in topic_indxs]
+
+        indices = [
+            filter_indices(t)
+            for t in (self.train_indxs, self.val_indxs, self.test_indxs)
+        ]
+        return (
+            [
+                torch.utils.data.DataLoader(
+                    PhemeDataset(t, self.embedding[t], self.labels[t]),
+                    batch_size=self.batch_size,
+                )
+                for t in i
+            ]
+            for i in indices
+        )
 
     def _filter_dataset(self, data: pd.DataFrame) -> pd.DataFrame:
         # remove unwanted datapoints
