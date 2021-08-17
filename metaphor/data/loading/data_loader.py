@@ -14,6 +14,7 @@ class Pheme:
         file_path: str,
         tokenizer: StandardTokenizer,
         embedder: nn.Module,
+        label_fun,
         batch_size: int = 128,
         splits: List[float] = [0.6, 0.2, 0.2],
         topic=None,
@@ -27,7 +28,7 @@ class Pheme:
             topics = sorted(list(set(data["topic"])))
             data = data.loc[[topics.index(t) == topic for t in data["topic"]]]
         self.data = data
-        labels = self.labels(data)
+        labels = label_fun(data)
         N = len(data["text"].values)
 
         indxs = np.random.permutation(np.arange(N))
@@ -73,13 +74,20 @@ class MisinformationPheme(Pheme):
         batch_size: int = 128,
         splits: List[float] = [0.6, 0.2, 0.2],
     ):
-        super().__init__(file_path, tokenizer, embedder, batch_size, splits)
+        super().__init__(
+            file_path=file_path,
+            tokenizer=tokenizer,
+            embedder=embedder,
+            batch_size=batch_size,
+            splits=splits,
+            label_fun=self.labels,
+        )
 
     def labels(self, data: pd.DataFrame) -> List[int]:
         # convert labels into integer classes
         labels = data["veracity"].values
         mapping = {"false": 0, "unverified": 1, "true": 2}
-        return [mapping[label] for label in labels]
+        return np.array([mapping[label] for label in labels])
 
 
 class PerTopicMisinformation:
@@ -97,8 +105,15 @@ class PerTopicMisinformation:
     ):
         n_topics = 9
         self.data = [
-            Pheme(file_path, tokenizer, embedder, label=i) for i in range(n_topics)
+            Pheme(file_path, tokenizer, embedder, topic=i, label_fun=self.labels)
+            for i in range(n_topics)
         ]
+
+    def labels(self, data: pd.DataFrame) -> List[int]:
+        # convert labels into integer classes
+        labels = data["veracity"].values
+        mapping = {"false": 0, "unverified": 1, "true": 2}
+        return np.array([mapping[label] for label in labels])
 
 
 class TopicPheme(Pheme):
@@ -114,11 +129,18 @@ class TopicPheme(Pheme):
         batch_size: int = 128,
         splits: List[float] = [0.6, 0.2, 0.2],
     ):
-        super().__init__(file_path, tokenizer, embedder, batch_size, splits)
+        super().__init__(
+            file_path=file_path,
+            tokenizer=tokenizer,
+            embedder=embedder,
+            batch_size=batch_size,
+            splits=splits,
+            label_fun=self.labels,
+        )
 
     def labels(self, data: pd.DataFrame) -> List[int]:
         topics = sorted(list(set(data["topic"])))
-        return [topics.index(x) for x in data["topic"].values]
+        return np.array([topics.index(x) for x in data["topic"].values])
 
 
 class PhemeDataset(torch.utils.data.Dataset):

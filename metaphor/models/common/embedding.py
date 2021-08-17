@@ -194,7 +194,6 @@ class CNN(nn.Module):
 class MLP(nn.Module):
     def __init__(self, layer_dimensions: List[int]):
         super().__init__()
-        # mlp_layers = [conv_channels[-1]*28*28] + mlp_layers
         layers = []
         for i in range(len(layer_dimensions) - 1):
             layers.append(nn.Linear(layer_dimensions[i], layer_dimensions[i + 1]))
@@ -207,28 +206,44 @@ class MLP(nn.Module):
 
 
 class ExpertMixture(nn.Module):
-    def __init__(self, n_topics: int, model_args, model, topic_selector):
+    def __init__(
+        self,
+        aggregator,
+        n_topics: int,
+        models,
+        topic_selector,
+        device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+    ):
+        super().__init__()
+        self.agg = aggregator
         self.topic_selector = topic_selector
-        self.models = [model(**model_args) for _ in range(n_topics)]
-        self.n_topics = n_topics
+        self.topic_selector.to(device)
+        self.models = models
+        for m in self.models:
+            m.to(device)
 
-    def forward(self, x):
+        self.n_topics = n_topics
+        self.device = device
+
+    def forward(self, x, ind):
+        x = self.agg(x, ind)
+        x = x.to(self.device)
         topics = self.topic_selector(x).argmax(dim=1)
-        preds = torch.zeros(x.shape[0], 3)
-        for i in range(topics):
+        preds = torch.zeros(x.shape[0], 3, device=self.device)
+        for i in range(self.n_topics):
             preds[topics == i] = self.models[i](x[topics == i])
         return preds
 
     def fit(self, trainer, topic_classification_loader, misinformation_loader):
         trainer.fit(
-            self.topic_selector,
+            nn.Sequential(self.agg, self.topic_selector),
             topic_classification_loader.train,
             topic_classification_loader.val,
         )
         for i in range(self.n_topics):
             # need to fit only to particular topic
             trainer.fit(
-                self.models[i],
+                nn.Sequential(self.agg, self.models[i]),
                 misinformation_loader.data[i].train,
                 misinformation_loader.data[i].val,
             )
