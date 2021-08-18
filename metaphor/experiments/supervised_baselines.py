@@ -124,10 +124,9 @@ def main():
             )
             expert_mixture.to(device)
             expert_mixture.fit(trainer, topic_pheme, data.per_topic())
+            acc, loss = trainer._evaluate_validation(expert_mixture, data.val)
             # results = trainer.fit(expert_mixture, data.train, data.val)
-            print(
-                f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}"
-            )
+            print(f"max train acc: {acc}, val acc: {loss}")
             torch.save(expert_mixture.state_dict(), PATH + "em-" + file_names[i][j])
 
     # train each of the models with the defenses

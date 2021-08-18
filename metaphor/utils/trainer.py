@@ -44,8 +44,8 @@ class ClassifierTrainer:
                         'validation_accuracy': vacc, 'validation_loss': vloss})
                 val_acc.append(vacc.item())
                 val_loss.append(vloss)
-            if epoch - np.argmin(np.array(val_loss)) > self.patience:
-                break
+                if epoch - np.argmin(np.array(val_loss)) > self.patience:
+                    break
         return {'train_accuracy': train_acc, 'train_loss': train_loss,
                 'validation_accuracy': val_acc, 'validation_loss': val_loss}
 
