@@ -240,7 +240,6 @@ class ExpertMixture(nn.Module):
             topic_classification_loader.train,
             topic_classification_loader.val,
         )
-        print("X")
         train, val = misinformation_loader[0], misinformation_loader[1]
         for i in range(self.n_topics):
             # need to fit only to particular topic
@@ -249,4 +248,3 @@ class ExpertMixture(nn.Module):
                 train[i],
                 val[i],
             )
-

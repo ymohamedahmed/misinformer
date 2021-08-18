@@ -195,7 +195,6 @@ class PhemeDataset(torch.utils.data.Dataset):
         self, tweet_ids: torch.Tensor, embedding: torch.Tensor, labels: torch.Tensor
     ):
         super().__init__()
-        print(embedding.shape)
         self.tweet_ids = tweet_ids
         self.embedding = embedding
         self.labels = labels
@@ -206,15 +205,4 @@ class PhemeDataset(torch.utils.data.Dataset):
     def __getitem__(
         self, index: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        try:
-            z = (self.tweet_ids[index], self.embedding[index], self.labels[index])
-        except IndexError as e:
-            print(e)
-            print(index)
-            print(self.embedding.shape)
-            print(self.embedding.shape[0])
-            print(self.tweet_ids)
-            print(self.embedding)
-            print(self.labels)
-
         return (self.tweet_ids[index], self.embedding[index]), self.labels[index]
