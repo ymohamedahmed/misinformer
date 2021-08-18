@@ -83,12 +83,6 @@ class Pheme:
             for t in [self.train_indxs, self.val_indxs, self.test_indxs]
         ]
 
-        for i, ind in enumerate(indices):
-            for j, top in enumerate(ind):
-                print(
-                    f'{"Train" if i == 0 else "Val" if i == 1 else "Test"} Topic: {j} Length: {len(top)}'
-                )
-
         # indices = [[np.array(t) for t in ind] for ind in indices]
 
         return [
