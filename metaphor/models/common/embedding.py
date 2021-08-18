@@ -1,4 +1,4 @@
-from metaphor.models.common.pooling import MeanPooler
+from metaphor.models.common.pooling import MeanPooler, MisinformationModel
 from typing import Dict, List
 import torch
 import torch.nn as nn
@@ -236,15 +236,17 @@ class ExpertMixture(nn.Module):
 
     def fit(self, trainer, topic_classification_loader, misinformation_loader):
         trainer.fit(
-            nn.Sequential(self.agg, self.topic_selector),
+            MisinformationModel(self.agg, self.topic_selector),
             topic_classification_loader.train,
             topic_classification_loader.val,
         )
-        train, val, test = misinformation_loader
+        print("X")
+        train, val = misinformation_loader[0], misinformation_loader[1]
         for i in range(self.n_topics):
             # need to fit only to particular topic
+            if train[i] is not None:
             trainer.fit(
-                nn.Sequential(self.agg, self.models[i]),
+                MisinformationModel(self.agg, self.models[i]),
                 train[i],
                 val[i],
             )

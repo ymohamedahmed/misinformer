@@ -58,7 +58,7 @@ class Pheme:
             batch_size=batch_size,
         )
         self.embedding = embedding
-        self.labels
+        self.labels = labels
         self.batch_size = batch_size
 
     def per_topic(self):
@@ -69,7 +69,7 @@ class Pheme:
             [
                 i
                 for i in range(len(self.data["topic"]))
-                if topics.index(self.data["topic"][i]) == j
+                if topics.index(self.data["topic"].values[i]) == j
             ]
             for j in range(len(topics))
         ]
@@ -80,18 +80,26 @@ class Pheme:
 
         indices = [
             filter_indices(t)
-            for t in (self.train_indxs, self.val_indxs, self.test_indxs)
+            for t in [self.train_indxs, self.val_indxs, self.test_indxs]
         ]
-        return (
+
+        for i, ind in enumerate(indices):
+            for j, top in enumerate(ind):
+                print(
+                    f'{"Train" if i == 0 else "Val" if i == 1 else "Test"} Topic: {j} Length: {len(top)}'
+                )
+
+        indices = [np.array(t) for ind in indices for t in ind]
+        return [
             [
                 torch.utils.data.DataLoader(
                     PhemeDataset(t, self.embedding[t], self.labels[t]),
                     batch_size=self.batch_size,
                 )
-                for t in i
+                for t in ind
             ]
-            for i in indices
-        )
+            for ind in indices
+        ]
 
     def _filter_dataset(self, data: pd.DataFrame) -> pd.DataFrame:
         # remove unwanted datapoints
@@ -186,9 +194,14 @@ class PhemeDataset(torch.utils.data.Dataset):
         self, tweet_ids: torch.Tensor, embedding: torch.Tensor, labels: torch.Tensor
     ):
         super().__init__()
-        self.tweet_ids = tweet_ids
-        self.embedding = embedding
-        self.labels = labels
+        if self.embedding.shape[0] == 0:
+            self.tweet_ids = np.array([tweet_ids])
+            self.embedding = np.array([embedding])
+            self.labels = np.array([labels])
+        else:
+            self.tweet_ids = tweet_ids
+            self.embedding = embedding
+            self.labels = labels
 
     def __len__(self):
         return self.embedding.shape[0]
