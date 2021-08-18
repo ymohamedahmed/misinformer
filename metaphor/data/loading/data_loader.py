@@ -89,7 +89,8 @@ class Pheme:
                     f'{"Train" if i == 0 else "Val" if i == 1 else "Test"} Topic: {j} Length: {len(top)}'
                 )
 
-        indices = [np.array(t) for ind in indices for t in ind]
+        indices = [[np.array(t) for t in ind] for ind in indices]
+
         return [
             [
                 torch.utils.data.DataLoader(
@@ -194,7 +195,8 @@ class PhemeDataset(torch.utils.data.Dataset):
         self, tweet_ids: torch.Tensor, embedding: torch.Tensor, labels: torch.Tensor
     ):
         super().__init__()
-        if self.embedding.shape[0] == 0:
+        print(embedding.shape)
+        if embedding.shape[0] == 1:
             self.tweet_ids = np.array([tweet_ids])
             self.embedding = np.array([embedding])
             self.labels = np.array([labels])
@@ -209,4 +211,15 @@ class PhemeDataset(torch.utils.data.Dataset):
     def __getitem__(
         self, index: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        try:
+            z = (self.tweet_ids[index], self.embedding[index], self.labels[index])
+        except IndexError as e:
+            print(e)
+            print(index)
+            print(self.embedding.shape)
+            print(self.embedding.shape[0])
+            print(self.tweet_ids)
+            print(self.embedding)
+            print(self.labels)
+
         return (self.tweet_ids[index], self.embedding[index]), self.labels[index]

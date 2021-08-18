@@ -244,7 +244,6 @@ class ExpertMixture(nn.Module):
         train, val = misinformation_loader[0], misinformation_loader[1]
         for i in range(self.n_topics):
             # need to fit only to particular topic
-            if train[i] is not None:
             trainer.fit(
                 MisinformationModel(self.agg, self.models[i]),
                 train[i],
