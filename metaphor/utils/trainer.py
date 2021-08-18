@@ -39,10 +39,11 @@ class ClassifierTrainer:
 
             # evaluate on validation set
             vacc, vloss = self._evaluate_validation(model, validation)
-            wandb.log({'train_loss': mean_loss/N, 'train_accuracy': mean_acc/N,
-                       'validation_accuracy': vacc, 'validation_loss': vloss})
-            val_acc.append(vacc.item())
-            val_loss.append(vloss)
+            if vacc is not None:
+                wandb.log({'train_loss': mean_loss/N, 'train_accuracy': mean_acc/N,
+                        'validation_accuracy': vacc, 'validation_loss': vloss})
+                val_acc.append(vacc.item())
+                val_loss.append(vloss)
             if epoch - np.argmin(np.array(val_loss)) > self.patience:
                 break
         return {'train_accuracy': train_acc, 'train_loss': train_loss,
@@ -65,4 +66,7 @@ class ClassifierTrainer:
             mean_acc += acc
             mean_loss += loss.detach().cpu().item()
             N += 1
-        return mean_acc/N, mean_loss/N
+        if N >= 1:
+            return mean_acc/N, mean_loss/N
+        else:
+            return None, None

@@ -89,7 +89,7 @@ class Pheme:
                     f'{"Train" if i == 0 else "Val" if i == 1 else "Test"} Topic: {j} Length: {len(top)}'
                 )
 
-        indices = [[np.array(t) for t in ind] for ind in indices]
+        # indices = [[np.array(t) for t in ind] for ind in indices]
 
         return [
             [
@@ -196,14 +196,9 @@ class PhemeDataset(torch.utils.data.Dataset):
     ):
         super().__init__()
         print(embedding.shape)
-        if embedding.shape[0] == 1:
-            self.tweet_ids = np.array([tweet_ids])
-            self.embedding = np.array([embedding])
-            self.labels = np.array([labels])
-        else:
-            self.tweet_ids = tweet_ids
-            self.embedding = embedding
-            self.labels = labels
+        self.tweet_ids = tweet_ids
+        self.embedding = embedding
+        self.labels = labels
 
     def __len__(self):
         return self.embedding.shape[0]
