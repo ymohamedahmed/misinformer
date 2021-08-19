@@ -92,9 +92,9 @@ def main():
             trainer = ClassifierTrainer(**trainer_args)
             results = trainer.fit(classifier, data.train, data.val)
             print(results)
-            print(
-                f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}"
-            )
+            # print(
+            # f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}"
+            # )
 
             # log results and save model
             torch.save(classifier.state_dict(), PATH + file_names[i][j])
@@ -119,14 +119,22 @@ def main():
             expert_mixture = ExpertMixture(
                 aggregator=models[j](**args[i][j]),
                 n_topics=n_topics,
-                models=[MLP(layers[i][j]) for _ in range(n_topics)],
-                topic_selector=MLP(mlp_layers),
+                models=[
+                    MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
+                    for _ in range(n_topics)
+                ],
+                topic_selector=MisinformationModel(
+                    models[j](**args[i][j]), MLP(mlp_layers)
+                ),
             )
             expert_mixture.to(device)
             expert_mixture.fit(trainer, topic_pheme, data.per_topic())
-            acc, loss = trainer._evaluate_validation(expert_mixture, data.val)
+            em_acc, em_loss = trainer._evaluate_validation(expert_mixture, data.val)
+            acc, loss = trainer._evaluate_validation(classifier, data.val)
+            print(f"em acc: {em_acc}, standard: {acc}")
             # results = trainer.fit(expert_mixture, data.train, data.val)
-            print(f"max train acc: {acc}, val acc: {loss}")
+            # print(f"max train acc: {acc}, val acc: {loss}")
+
             torch.save(expert_mixture.state_dict(), PATH + "em-" + file_names[i][j])
 
     # train each of the models with the defenses

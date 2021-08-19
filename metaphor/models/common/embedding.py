@@ -226,17 +226,20 @@ class ExpertMixture(nn.Module):
         self.device = device
 
     def forward(self, x, ind):
-        x = self.agg(x, ind)
-        x = x.to(self.device)
-        topics = self.topic_selector(x).argmax(dim=1)
+        # x = self.agg(x, ind)
+        # x = x.to(self.device)
+        topics = self.topic_selector(x, ind).argmax(dim=1)
         preds = torch.zeros(x.shape[0], 3, device=self.device)
+
         for i in range(self.n_topics):
-            preds[topics == i] = self.models[i](x[topics == i])
+            if sum(topics == i) > 0:
+                preds[topics == i] = self.models[i](x[topics == i], ind[topics == i])
         return preds
 
     def fit(self, trainer, topic_classification_loader, misinformation_loader):
         trainer.fit(
-            MisinformationModel(self.agg, self.topic_selector),
+            self.topic_selector,
+            # MisinformationModel(self.agg, self.topic_selector),
             topic_classification_loader.train,
             topic_classification_loader.val,
         )
@@ -244,7 +247,8 @@ class ExpertMixture(nn.Module):
         for i in range(self.n_topics):
             # need to fit only to particular topic
             trainer.fit(
-                MisinformationModel(self.agg, self.models[i]),
+                self.models[i],
+                # MisinformationModel(self.agg, self.models[i]),
                 train[i],
                 val[i],
             )
