@@ -12,14 +12,6 @@ import torch
 # The train set allows for adversarial training (consider it as a data-augmentation)
 
 
-def _paraphrase():
-    pass
-
-
-def _concat():
-    pass
-
-
 def main():
     PATH = "/content/drive/My Drive/ucl-msc/dissertation/attacks/"
     pheme_path = os.path.join(

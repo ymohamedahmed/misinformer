@@ -21,6 +21,7 @@ from metaphor.data.loading.data_loader import (
 import os
 import torch
 import wandb
+import config
 
 tokenizers = [CustomBertTokenizer, StandardTokenizer]
 embeddings = [Bert, Glove]
@@ -64,7 +65,6 @@ def main():
         "device": device,
         "loss": nn.CrossEntropyLoss(),
     }
-    PATH = "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/"
     file_names = [
         ["bert-mean.npy", "bert-cnn.npy", "bert-rnn.npy"],
         ["glove-mean.npy", "glove-cnn.npy", "glove-rnn.npy"],
@@ -97,7 +97,7 @@ def main():
             # )
 
             # log results and save model
-            torch.save(classifier.state_dict(), PATH + file_names[i][j])
+            torch.save(classifier.state_dict(), config.PATH + file_names[i][j])
 
             # train mixture of experts
             topic_pheme = TopicPheme(
@@ -135,7 +135,9 @@ def main():
             # results = trainer.fit(expert_mixture, data.train, data.val)
             # print(f"max train acc: {acc}, val acc: {loss}")
 
-            torch.save(expert_mixture.state_dict(), PATH + "em-" + file_names[i][j])
+            torch.save(
+                expert_mixture.state_dict(), config.PATH + "em-" + file_names[i][j]
+            )
 
     # train each of the models with the defenses
 

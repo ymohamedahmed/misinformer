@@ -3,43 +3,90 @@ import torch.nn as nn
 import numpy as np
 from typing import List
 from metaphor.models.common.tokenize import Tokenizer
+from enum import Enum
 import gensim.downloader as api
 from gensim.utils import tokenize
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import string
 
-"""
-An attack is formulated as a function on tokenized sentences and indices
-In general, we would expect only to modify the val. and test sentences
-in which the indices would contain the relevant val. and test. indices
-"""
+
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)  # only difference
 
 
 class Attack:
-    def __init__(self, path):
-        pass
+    pass
+
+
+class MisinformerMode(Enum):
+    UNTARGETED = 1
+    FALSE = 2
+    UNVERIFIED = 3
+    TRUE = 4
 
 
 class ConcatenationAttack(Attack):
-    def __init__(
-        self,
-        attack: str,
-    ):
-        self.attack = attack
+    def __init__(self, lime_scores, number_of_concats: int):
+        self.lime_scores = lime_scores
+        self.number_of_concats = number_of_concats
 
     def attack(self, sentences):
-        return [x + " " + self.attack for x in sentences]
+        attacked_sentences = []
+        for x in sentences:
+            # sample concatenation strings
+            indxs = np.random.choice(
+                len(self.lime_scores.keys()),
+                size=self.number_of_concat,
+                p=softmax(self.lime_scores.values),
+            )
+            attack = self.lime_scores.keys()[indxs]
+            attacked_sentences.append(x + " " + attack)
+        return attacked_sentences
 
 
-class Misinformer(Attack):
-# class LimeConcatenationAttack(ConcatenationAttack):
-#     def __init__(self, lime_path: str, N):
-#         """
-#         lime_path: the path to the global explainers
-#         N: the top N explainers to use in the concatenation attack
-#         """
+class CharAttack(Attack):
+    def __init__(self, lime_score, max_levenshtein=2, max_number_of_words=3):
+        self.lime_score = lime_score
+        self.max_lev = max_levenshtein
 
-#         super().__init__(attack=..)
+    def _attack(self, word):
+        lower_chars = string.ascii_lowercase
+        for _ in self.max_lev:
+            # insertion, deletion or sub
+            ind = np.random.randint(len(word))
+            # insertion
+            word = word[:ind] + np.random.choice(lower_chars) + word[ind:]
+
+            # deletion
+            word = word[:ind] + word[ind + 1 :]
+
+            # sub
+            word = word[:ind] + np.random.choice(lower_chars) + word[ind + 1 :]
+        return word
+
+    def attack(self, sentences: List[str]):
+        scores = []
+        attacked = []
+        for sentence in sentences:
+            for word in sentence.split():
+                score = (
+                    self.target(self.lime_scores[word])
+                    if word in self.lime_scores
+                    else 0
+                )
+                scores.append(score)
+            scores = np.array(scores)
+            attack_words_indxs = np.random.choice(
+                a=len(scores), size=self.max_number_of_words, p=softmax(scores)
+            )
+            attacked_sentence = sentences.copy().split()
+            for i in attack_words_indxs:
+                attacked_sentence[i] = self._attack(attacked_sentence[i])
+
+            attacked.append(" ".join(attacked_sentence))
+        return attacked
 
 
 class ParaphraseAttack(Attack):
@@ -48,7 +95,7 @@ class ParaphraseAttack(Attack):
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
-        attempts: int = 5,
+        attempts: int = 16,
         path: str = None,
     ):
         self.tokenizer = AutoTokenizer.from_pretrained("Vamsi/T5_Paraphrase_Paws")
@@ -93,10 +140,58 @@ class ParaphraseAttack(Attack):
         return attacked_sentences
 
 
-class KSynonymAttack(Attack):
-    """Replace k words in the sentence with a synonym such that the likelihood
-    of misclassification is maximised"""
+class Misinformer(Attack):
+    def __init__(
+        self,
+        lime_scores,
+        target=MisinformerMode.TRUE,
+        attacks=[
+            True,
+            True,
+            True,
+        ],  # whether or not to use paraphrase attack, char attack and/or concat attack
+    ):
+        # lime scores is of the form word -> [false-score, unverified-score, true-score]
+        self.lime_scores = lime_scores
+        indices = {
+            MisinformerMode.FALSE: 0,
+            MisinformerMode.UNVERIFIED: 1,
+            MisinformerMode.TRUE: 2,
+        }
+        target = (
+            lambda array: np.mean(array)
+            if target == MisinformerMode.UNTARGETED
+            else array[indices[target]]
+        )
+        self.attacks = attacks
+        for k in self.lime_scores.keys():
+            self.lime_scores[k] = target(self.lime_scores_k)
+        self.paraphraser = ParaphraseAttack()
+        self.char_attack = CharAttack(self.lime_scores)
+        self.concat_attack = ConcatenationAttack(self.lime_scores)
 
+    def attack(self, model, surrogate_model, test_set):
+        # test_set should be the set of strings and labels
+        scores = []
+        for x, y in test_set:
+            for word in x.split():
+                score = self.lime_scores[word] if word in self.lime_scores else 0
+                scores.append(score)
+
+            if self.attacks[0]:
+                attacked = self.paraphrase.attack(x) + [x.copy() for _ in range(16)]
+            else:
+                attacked = [x.copy() for _ in range(32)]
+            # a batch of 32 strings, 16 have been paraphrase, 16 are the original
+            if self.attacks[1]:
+                attacked = self.char_attack.attack(attacked)
+            if self.attacks[2]:
+                attacked = self.concat_attack.attack(attacked)
+            print(attacked)
+
+
+# Not in use
+class KSynonymAttack(Attack):
     def __init__(
         self,
         k: int,
