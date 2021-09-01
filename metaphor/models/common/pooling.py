@@ -21,6 +21,18 @@ class MeanPooler(nn.Module):
         ).div_(sentence_lengths.unsqueeze(1))
 
 
+class MaxPooler(nn.Module):
+    def __init__(self, tokenizer: StandardTokenizer):
+        super().__init__()
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.tokenizer = tokenizer
+
+    def forward(self, x: torch.Tensor, indxs: torch.Tensor):
+        return torch.max(
+            x * self.tokenizer.mask[indxs].unsqueeze(2).to(self.device), dim=1
+        )
+
+
 class MisinformationModel(nn.Module):
     def __init__(self, aggregator: nn.Module, classifier: nn.Module):
         # aggregator takes a series of embeddings and produces a single vector

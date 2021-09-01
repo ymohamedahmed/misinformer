@@ -7,6 +7,7 @@ from metaphor.models.common import (
     Glove,
     MLP,
     MeanPooler,
+    MaxPooler,
     CustomBertTokenizer,
     StandardTokenizer,
     MisinformationModel,
@@ -18,6 +19,7 @@ from metaphor.data.loading.data_loader import (
     TopicPheme,
     PerTopicMisinformation,
 )
+import scipy.stats
 import os
 import torch
 import wandb
@@ -25,10 +27,10 @@ import config
 
 tokenizers = [CustomBertTokenizer, StandardTokenizer]
 embeddings = [Bert, Glove]
-models = [MeanPooler, CNN, RNN]
+models = [MeanPooler, MaxPooler, CNN, RNN]
 layers = [
-    [[768, 25, 5, 3], [20 * 210, 25, 5, 3], [256, 25, 5, 3]],
-    [[200, 25, 5, 3], [20 * 150, 25, 5, 3], [200, 25, 5, 3]],
+    [[768, 25, 5, 3], [768, 25, 5, 3], [20 * 210, 25, 5, 3], [256, 25, 5, 3]],
+    [[200, 25, 5, 3], [200, 25, 5, 3], [20 * 150, 25, 5, 3], [200, 25, 5, 3]],
 ]
 pool_args = {}
 cnn_args = {
@@ -50,8 +52,8 @@ glove_rnn_args = {
     "embedding_size": 200,
 }
 args = [
-    [pool_args, cnn_args, bert_rnn_args],
-    [pool_args, glove_cnn_args, glove_rnn_args],
+    [pool_args, {}, cnn_args, bert_rnn_args],
+    [pool_args, {}, glove_cnn_args, glove_rnn_args],
 ]
 
 # run all combinations of models
@@ -66,20 +68,24 @@ def main():
         "loss": nn.CrossEntropyLoss(),
     }
     file_names = [
-        ["bert-mean.npy", "bert-cnn.npy", "bert-rnn.npy"],
-        ["glove-mean.npy", "glove-cnn.npy", "glove-rnn.npy"],
+        ["bert-mean.npy", "bert-max.npy", "bert-cnn.npy", "bert-rnn.npy"],
+        ["glove-mean.npy", "glove-max.npy", "glove-cnn.npy", "glove-rnn.npy"],
     ]
 
     pheme_path = os.path.join(
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
     )
+    predictions = None
     for i in range(2):
         tokenizer = tokenizers[i]()
         data = MisinformationPheme(
             file_path=pheme_path, tokenizer=tokenizer, embedder=embeddings[i](tokenizer)
         )
+        if predictions is None:
+            test_sentences = [data.data["text"].values[i] for i in data.test_indxs]
+            predictions = torch.zeros((9, len(test_sentences)))
 
-        for j in range(3):
+        for j in range(4):
             wandb.init(project="metaphor", entity="youmed", reinit=True)
             args[i][j]["tokenizer"] = tokenizer
             config = wandb.config
@@ -92,54 +98,28 @@ def main():
             trainer = ClassifierTrainer(**trainer_args)
             results = trainer.fit(classifier, data.train, data.val)
             print(results)
-            # print(
-            # f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}"
-            # )
+            print(
+                f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}"
+            )
 
             # log results and save model
             torch.save(classifier.state_dict(), config.PATH + file_names[i][j])
+            preds = []
+            for x, y in data.test:
+                x = x.to(device)
+                y_prime = classifier(x)
+                preds.append(y_prime)
+            predictions[(i * 2) + j] = torch.tensor(preds)
 
-            # train mixture of experts
-            topic_pheme = TopicPheme(
-                file_path=pheme_path,
-                tokenizer=tokenizer,
-                embedder=embeddings[i](tokenizer),
-            )
-
-            # change MLP to classify topics
-            mlp_layers = layers[i][j].copy()
-            mlp_layers.pop()
-            mlp_layers.append(9)
-            # ptm = PerTopicMisinformation(
-            #     file_path=pheme_path,
-            #     tokenizer=tokenizer,
-            #     embedder=embeddings[i](tokenizer),
-            # )
-            n_topics = 9
-            expert_mixture = ExpertMixture(
-                aggregator=models[j](**args[i][j]),
-                n_topics=n_topics,
-                models=[
-                    MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
-                    for _ in range(n_topics)
-                ],
-                topic_selector=MisinformationModel(
-                    models[j](**args[i][j]), MLP(mlp_layers)
-                ),
-            )
-            expert_mixture.to(device)
-            expert_mixture.fit(trainer, topic_pheme, data.per_topic())
-            em_acc, em_loss = trainer._evaluate_validation(expert_mixture, data.val)
-            acc, loss = trainer._evaluate_validation(classifier, data.val)
-            print(f"em acc: {em_acc}, standard: {acc}")
-            # results = trainer.fit(expert_mixture, data.train, data.val)
-            # print(f"max train acc: {acc}, val acc: {loss}")
-
-            torch.save(
-                expert_mixture.state_dict(), config.PATH + "em-" + file_names[i][j]
-            )
-
-    # train each of the models with the defenses
+    # most common baseline
+    pheme = MisinformationPheme(
+        file_path=pheme_path,
+        tokenizer=lambda x: x,
+        embedder=lambda x: torch.zeros((len(x), 200)),
+    )
+    labels = pheme.labels[pheme.train_indxs])
+    predictions[8] = scipy.stats.mode(labels)[0]*torch.ones((len(labels)))
+    torch.save(predictions, config.PRED_PATH + "test_predictions.npy")
 
 
 if __name__ == "__main__":
