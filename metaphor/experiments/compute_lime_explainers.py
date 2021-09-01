@@ -1,6 +1,6 @@
 from lime import lime_text
 from lime.lime_text import LimeTextExplainer
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 from metaphor.data.loading.data_loader import Pheme, MisinformationPheme
 import torch
 import os
@@ -70,7 +70,6 @@ def main():
         exp = explainer.explain_instance(
             sample, proba, num_features=6, labels=[0, 2], top_labels=3
         )
-        print(exp)
         for i in range(3):
             for (word, importance) in exp.as_list(i):
                 class_global_exp = global_explainers[i]
@@ -86,19 +85,27 @@ def main():
     for label in range(3):
         for word in global_explainers[label].keys():
             scores = np.array(global_explainers[label][word])
-            lime_score = np.sqrt(np.sum(np.abs(scores)))
+            lime_score = np.sqrt(np.maximum(0, np.sum(scores)))
+            #         lime_score = np.sqrt(np.sum(np.abs(scores)))
             if not (word in lime_scores_per_class):
-                lime_scores_per_class[word] = [0, 0, 0]
+                lime_scores_per_class[word] = np.zeros((3))
             lime_scores_per_class[word][label] = lime_score
-    p_cj = np.zeros((len(lime_scores_per_class.keys()), 3))
-    lime_scores = np.array((len(lime_scores_per_class.keys()), 3))
+
+    print(lime_scores_per_class)
+    N = len(lime_scores_per_class.keys())
+    p_cj = np.zeros((N, 3))
+    lime_scores = np.zeros((N, 3))
     for i, word in enumerate(lime_scores_per_class.keys()):
         p_cj[i] = lime_scores_per_class[word] / lime_scores_per_class[word].sum()
-        lime_scores[i] = np.array(lime_scores_per_class[word])
+        print(lime_scores_per_class[word])
+        lime_scores[i, :] = lime_scores_per_class[word]
 
     # compute entropy
-    H = (-p_cj * np.log(p_cj + 10 ^ -8)).sum(axis=1)
-    lime_scores = (1 - (H - np.min(H)) / (np.max(H) - np.min(H))) * lime_scores
+    print(p_cj)
+    H = (-p_cj * np.log(p_cj + (10 ** -8))).sum(axis=1)
+    coeff = 1 - (H - np.min(H)) / (np.max(H) - np.min(H))
+    coeff = coeff.reshape((coeff.shape[0], 1))
+    lime_scores = coeff * lime_scores
 
     for i, word in enumerate(lime_scores_per_class.keys()):
         lime_scores_per_class[word] = lime_scores[i]
