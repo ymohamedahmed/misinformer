@@ -6,6 +6,7 @@ def forward(sentences, model, tokenizer, embedding, batch_size=128, device=None)
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     logits = torch.zeros((len(sentences), 3))
     tokenized_sentences = tokenizer(sentences)
+    embedding.to(device)
     embedding = embedding(tokenized_sentences).to(device)
 
     model.to(device)

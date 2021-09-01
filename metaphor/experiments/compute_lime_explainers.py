@@ -1,7 +1,7 @@
 from lime import lime_text
 from lime.lime_text import LimeTextExplainer
 from tqdm.notebook import tqdm
-from metaphor.data.loading.data_loader import Pheme
+from metaphor.data.loading.data_loader import Pheme, MisinformationPheme
 import torch
 import os
 from metaphor.models.common import (
@@ -32,14 +32,21 @@ def load_obj(name):
         return pickle.load(f)
 
 
-# compute the lime explainers
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 tokenizer = CustomBertTokenizer()
 embedding = Bert(tokenizer=tokenizer)
+pheme_path = "/content/meta-misinformation-detection/data/pheme/processed-pheme.csv"
 layers = [768, 25, 5, 3]
 args = {}
 args["tokenizer"] = tokenizer
-model = MisinformationModel(MeanPooler(args), MLP(layers))
+pheme = MisinformationPheme(
+    file_path=pheme_path,
+    tokenizer=lambda x: x,
+    embedder=lambda x: torch.zeros((len(x), 200)),
+)
+model = MisinformationModel(MeanPooler(**args), MLP(layers))
 model.load_state_dict(torch.load(config.PATH + "bert-mean.npy"))
+embedding.to(device)
 
 
 def proba(x):
@@ -56,12 +63,6 @@ def main():
     class_names = ["false", "unverified", "true"]
     explainer = LimeTextExplainer(class_names=class_names)
 
-    pheme_path = "/content/meta-misinformation-detection/data/pheme/processed-pheme.csv"
-    pheme = Pheme(
-        file_path=pheme_path,
-        tokenizer=lambda x: x,
-        embedder=lambda x: torch.zeros((len(x), 200)),
-    )
     # files: {train,val,test}_{false, unverified, true}_based.csv
     train_sentences = [pheme.data["text"].values[i] for i in pheme.train_indxs]
     global_explainers = {0: {}, 1: {}, 2: {}}
@@ -69,6 +70,7 @@ def main():
         exp = explainer.explain_instance(
             sample, proba, num_features=6, labels=[0, 2], top_labels=3
         )
+        print(exp)
         for i in range(3):
             for (word, importance) in exp.as_list(i):
                 class_global_exp = global_explainers[i]
