@@ -8,6 +8,17 @@ import os
 from metaphor.data.loading.data_loader import Pheme
 import torch
 
+# For each attack compute it on the train, validation and test set
+# The train set allows for adversarial training (consider it as a data-augmentation)
+
+
+def _paraphrase():
+    pass
+
+
+def _concat():
+    pass
+
 
 def main():
     PATH = "/content/drive/My Drive/ucl-msc/dissertation/attacks/"
@@ -20,18 +31,8 @@ def main():
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
     val_sentences = [pheme.data["text"].values[i] for i in pheme.val_indxs]
-    """
-    for k in range(7):
-        asen = KSynonymAttack(
-            k=k,
-            sentences=val_sentences,
-        ).attacked_sentences
-        with open(PATH + f"synonym_attack_{k}.txt", "w") as f:
-            for sen in asen:
-                f.write("%s\n" % sen)
-    """
-    asen = ParaphraseAttack(sentences=val_sentences).attacked_sentences
-    with open(PATH + "paraphrase_attack.txt", "w") as f:
+    asen = ParaphraseAttack().attack(val_sentences)
+    with open(PATH + "val_paraphrase_attack.txt", "w") as f:
         for sen in asen:
             f.write("%s\n" % sen)
 

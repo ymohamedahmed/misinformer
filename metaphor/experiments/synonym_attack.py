@@ -56,10 +56,9 @@ def main():
     tokenizers = [CustomBertTokenizer, StandardTokenizer]
     ATTEMPTS = 5
     preds = torch.zeros((6, ATTEMPTS, len(val_sentences)))
-    syn = ParaphraseAttack(
+    attacked_sentences = ParaphraseAttack(
         path=ATTACK_PATH + "paraphrase_attack.txt",
-        sentences=val_sentences,
-    )
+    ).attack(sentences=val_sentences)
     for i in range(2):
         tokenizer = tokenizers[i]()
         embedding = embeddings[i](tokenizer=tokenizer)
@@ -67,19 +66,13 @@ def main():
             args[i][j]["tokenizer"] = tokenizer
             model = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
             model.load_state_dict(torch.load(CHECKPOINT_PATH + file_names[i][j]))
-            print("Loaded model")
-            print("Constructed attack")
-            print(val_sentences)
 
             predictions = predict(
-                syn.attacked_sentences,
+                attacked_sentences,
                 model,
                 tokenizer,
                 embedding,
             )  # shape: attempts x len(val_sentences)
-            print(len(syn.attacked_sentences))
-            print(predictions.shape)
-            print(len(labels))
             predictions = predictions.reshape((len(val_sentences), ATTEMPTS)).T
             accuracy = (1.0 * torch.eq(labels, predictions)).min(dim=0)[0].mean()
             print(f"new accuracy: {accuracy}")
@@ -106,7 +99,7 @@ def main():
             # expert_mixture.to(device)
 
             predictions = predict(
-                syn.attacked_sentences,
+                attacked_sentences,
                 expert_mixture,
                 tokenizer,
                 embedding,

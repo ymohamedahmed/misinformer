@@ -20,29 +20,31 @@ class Attack:
         pass
 
 
-class LimeConcatenationAttack(Attack):
-    """"""
-
-    pass
-
-
 class ConcatenationAttack(Attack):
     def __init__(
         self,
-        sentences: List[str],
         attack: str,
     ):
         self.attack = attack
-        self.attacked_sentences = self.attack(sentences)
 
     def attack(self, sentences):
         return [x + " " + self.attack for x in sentences]
 
 
+class Misinformer(Attack):
+# class LimeConcatenationAttack(ConcatenationAttack):
+#     def __init__(self, lime_path: str, N):
+#         """
+#         lime_path: the path to the global explainers
+#         N: the top N explainers to use in the concatenation attack
+#         """
+
+#         super().__init__(attack=..)
+
+
 class ParaphraseAttack(Attack):
     def __init__(
         self,
-        sentences: List[str],
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
@@ -55,7 +57,6 @@ class ParaphraseAttack(Attack):
         self.device = device
         self.model.to(device)
         self.attempts = attempts
-        self.attacked_sentences = self.attack(sentences)
 
     def attack(self, sentences: List[str]):
         if self.path is not None:
@@ -99,7 +100,6 @@ class KSynonymAttack(Attack):
     def __init__(
         self,
         k: int,
-        sentences: List[str],
         attempts: int = 5,
         N: int = 3,
         batch_size: int = 128,
@@ -124,7 +124,6 @@ class KSynonymAttack(Attack):
         self.synonym_model = api.load("glove-wiki-gigaword-300")
         self.device = device
         self.path = path
-        self.attacked_sentences = self.attack(sentences)
 
     def attack(self, sentences: List[str]):
         if self.path is not None:
