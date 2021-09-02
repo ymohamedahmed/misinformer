@@ -57,10 +57,6 @@ args = [
 ]
 
 
-def get_model():
-    pass
-
-
 # run all combinations of models
 def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -93,9 +89,9 @@ def main():
         for j in range(4):
             wandb.init(project="metaphor", entity="youmed", reinit=True)
             args[i][j]["tokenizer"] = tokenizer
-            config = wandb.config
-            config.args = args[i][j]
-            config.layers = layers[i][j]
+            wandb_config = wandb.config
+            wandb_config.args = args[i][j]
+            wandb_config.layers = layers[i][j]
             classifier = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
             wandb.watch(classifier)
             classifier.to(device)
@@ -108,7 +104,10 @@ def main():
             )
 
             # log results and save model
-            torch.save(classifier.state_dict(), config.PATH + file_names[i][j])
+            torch.save(
+                classifier.state_dict(),
+                config.PATH + file_names[i][j],
+            )
             preds = []
             for x, y in data.test:
                 x = x.to(device)

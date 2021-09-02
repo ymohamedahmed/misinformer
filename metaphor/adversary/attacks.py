@@ -223,8 +223,6 @@ class Misinformer(Attack):
                     predictions.append(self.target_label)
                 else:
                     predictions.append(y_prime)
-                print(f"Original: {x}")
-                print(f"Attacked: {attacked}")
             else:
                 predictions.append(self.target_label)
         predictions = np.array(predictions)
