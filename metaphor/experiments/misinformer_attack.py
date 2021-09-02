@@ -48,7 +48,7 @@ def main():
         model=model,
         test_labels=pheme.labels[pheme.test_indxs],
         surrogate_model=None,
-        test_set=test_sentences,
+        test_sentences=test_sentences,
         embedding=embedding,
         tokenizer=tokenizer,
     )
