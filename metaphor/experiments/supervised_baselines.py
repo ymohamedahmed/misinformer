@@ -117,10 +117,11 @@ def main():
         tokenizer=lambda x: x,
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
-    labels = pheme.labels[pheme.train_indxs])
-    predictions[8] = scipy.stats.mode(labels)[0]*torch.ones((len(labels)))
+    labels = pheme.labels[pheme.train_indxs]
+    predictions[8] = scipy.stats.mode(labels)[0] * torch.ones((len(labels)))
     torch.save(predictions, config.PRED_PATH + "test_predictions.npy")
 
- #  retrain on the harder task 
+
+#  retrain on the harder task
 if __name__ == "__main__":
     main()
