@@ -46,6 +46,7 @@ def main():
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
     mis.attack(
         model=model,
+        test_labels=pheme.labels[pheme.test_indxs],
         surrogate_model=None,
         test_set=test_sentences,
         embedding=embedding,

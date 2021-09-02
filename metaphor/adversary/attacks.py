@@ -184,12 +184,16 @@ class Misinformer(Attack):
     #  and measure how effectiveness changes
     # Option1: fixed attempts
     # Option2: adaptive/genetic algorithm
-    def attack(self, model, surrogate_model, test_set, tokenizer, embedding):
+    def attack(
+        self, model, surrogate_model, test_sentences, test_labels, tokenizer, embedding
+    ):
         # test_set should be the set of test strings e.g. ['hello world', 'quick brown fox', ...]
         scores = []
         total_target_examples = 0
         hit_rate = 0
-        for x in tqdm(test_set):
+        predictions = []
+
+        for x in tqdm(test_sentences):
             y_prime = predict([x], model, tokenizer, embedding)[0]
             if y_prime != self.target_label:
                 total_target_examples += 1
@@ -209,8 +213,23 @@ class Misinformer(Attack):
                 if self.attacks[2]:
                     attacked = self.concat_attack.attack(attacked)
                 classes = predict(attacked, model, tokenizer, embedding)
-                hit_rate += classes.eq(self.target_label).sum() > 0
+                hit = classes.eq(self.target_label).sum() > 0
+                if hit:
+                    hit_rate += 1
+                    predictions.append(self.target_label)
+                else:
+                    predictions.append(y_prime)
+            else:
+                predictions.append(self.target_label)
+        predictions = np.array(predictions)
         print(f"Attack success rate: {100*hit_rate/total_target_examples}%")
+        print(f"New acc: {(predictions==test_labels).mean()}")
+        print(
+            f"Total prediction of target label: {(predictions==self.target_label).mean()}"
+        )
+        print(
+            f"True frequency of target label: {(test_labels==self.target_label).mean()}"
+        )
         # print(f"Model would predict the target for {hit_rate+}")
 
 
