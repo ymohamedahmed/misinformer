@@ -56,6 +56,11 @@ args = [
     [pool_args, {}, glove_cnn_args, glove_rnn_args],
 ]
 
+
+def get_model():
+    pass
+
+
 # run all combinations of models
 def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

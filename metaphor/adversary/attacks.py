@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 from typing import List
 from metaphor.models.common.tokenize import Tokenizer
-from metaphor.utils.utils import load_obj
+from metaphor.utils.utils import load_obj, predict
 from enum import Enum
 import gensim.downloader as api
 from gensim.utils import tokenize
@@ -15,7 +15,7 @@ import metaphor
 
 def softmax(x):
     e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum(axis=0)  # only difference
+    return e_x / e_x.sum(axis=0)
 
 
 class Attack:
@@ -33,6 +33,7 @@ class ConcatenationAttack(Attack):
     def __init__(self, lime_scores, number_of_concats: int):
         self.lime_scores = lime_scores
         self.number_of_concats = number_of_concats
+        self._p = softmax(np.array(list(self.lime_scores.values())))
 
     def attack(self, sentences):
         attacked_sentences = []
@@ -41,9 +42,9 @@ class ConcatenationAttack(Attack):
             indxs = np.random.choice(
                 len(self.lime_scores.keys()),
                 size=self.number_of_concats,
-                p=softmax(self.lime_scores.values),
+                p=self._p,
             )
-            attack = list(self.lime_scores.keys())[indxs]
+            attack = " ".join([list(self.lime_scores.keys())[i] for i in indxs])
             attacked_sentences.append(x + " " + attack)
         return attacked_sentences
 
@@ -58,17 +59,18 @@ class CharAttack(Attack):
         lower_chars = list(string.ascii_lowercase)
         for _ in range(self.max_lev):
             # insertion, deletion or sub
-            ind = np.random.randint(low=0, high=len(word))
-            p = np.random.uniform()
-            if p < 1 / 3:
-                # insertion
-                word = word[:ind] + np.random.choice(lower_chars) + word[ind:]
-            elif p < 2 / 3:
-                # deletion
-                word = word[:ind] + word[ind + 1 :]
-            else:
-                # sub
-                word = word[:ind] + np.random.choice(lower_chars) + word[ind + 1 :]
+            if len(word) > 0:
+                ind = np.random.randint(low=0, high=len(word))
+                p = np.random.uniform()
+                if p < 1 / 3:
+                    # insertion
+                    word = word[:ind] + np.random.choice(lower_chars) + word[ind:]
+                elif p < 2 / 3:
+                    # deletion
+                    word = word[:ind] + word[ind + 1 :]
+                else:
+                    # sub
+                    word = word[:ind] + np.random.choice(lower_chars) + word[ind + 1 :]
         return word
 
     def attack(self, sentences: List[str]):
@@ -83,7 +85,7 @@ class CharAttack(Attack):
                 a=len(scores), size=self.max_number_of_words, p=softmax(scores)
             )
             attacked_sentence = sentence.split()
-            for i in attack_words_indxs:
+            for i in list(set(attack_words_indxs)):
                 attacked_sentence[i] = self._attack(attacked_sentence[i])
 
             attacked.append(" ".join(attacked_sentence))
@@ -96,7 +98,7 @@ class ParaphraseAttack(Attack):
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
         ),
-        attempts: int = 16,
+        attempts: int = 4,
         path: str = None,
     ):
         self.tokenizer = AutoTokenizer.from_pretrained("Vamsi/T5_Paraphrase_Paws")
@@ -125,13 +127,12 @@ class ParaphraseAttack(Attack):
                 attention_mask=attention_masks,
                 max_length=256,
                 do_sample=True,
-                top_k=200,
-                top_p=0.95,
+                top_k=10,
+                top_p=0.99,
                 early_stopping=True,
                 num_return_sequences=self.attempts,
             )
 
-            lines = []
             for output in outputs:
                 line = self.tokenizer.decode(
                     output, skip_special_tokens=True, clean_up_tokenization_spaces=True
@@ -155,11 +156,16 @@ class Misinformer(Attack):
     ):
         # lime scores is of the form word -> [false-score, unverified-score, true-score]
         self.lime_scores = lime_scores
+        if target == MisinformerMode.UNTARGETED:
+            raise ValueError(
+                "Untargeted attacks are no longer supported; this is primarily for a True attack"
+            )
         indices = {
             MisinformerMode.FALSE: 0,
             MisinformerMode.UNVERIFIED: 1,
             MisinformerMode.TRUE: 2,
         }
+        self.target_label = indices[target]
         agg = (
             lambda array: np.mean(array)
             if target == MisinformerMode.UNTARGETED
@@ -174,24 +180,38 @@ class Misinformer(Attack):
             self.lime_scores, number_of_concats=number_of_concats
         )
 
-    def attack(self, model, surrogate_model, test_set):
-        # test_set should be the set of strings and labels
+    #  TODO: Add support for changing number of attacked sentences generated
+    #  and measure how effectiveness changes
+    # Option1: fixed attempts
+    # Option2: adaptive/genetic algorithm
+    def attack(self, model, surrogate_model, test_set, tokenizer, embedding):
+        # test_set should be the set of test strings e.g. ['hello world', 'quick brown fox', ...]
         scores = []
-        for x, y in test_set:
-            for word in x.split():
-                score = self.lime_scores[word] if word in self.lime_scores else 10 ** -5
-                scores.append(score)
+        total_target_examples = 0
+        hit_rate = 0
+        for x in tqdm(test_set):
+            y_prime = predict(x, model, tokenizer, embedding)[0]
+            if y_prime != self.target_label:
+                total_target_examples += 1
+                for word in x.split():
+                    score = (
+                        self.lime_scores[word] if word in self.lime_scores else 10 ** -5
+                    )
+                    scores.append(score)
 
-            if self.attacks[0]:
-                attacked = self.paraphraser.attack([x]) + [x for _ in range(16)]
-            else:
-                attacked = [x for _ in range(32)]
-            # a batch of 32 strings, 16 have been paraphrased, 16 are the original
-            if self.attacks[1]:
-                attacked = self.char_attack.attack(attacked)
-            if self.attacks[2]:
-                attacked = self.concat_attack.attack(attacked)
-            print(attacked)
+                if self.attacks[0]:
+                    attacked = self.paraphraser.attack([x]) + [x for _ in range(16)]
+                else:
+                    attacked = [x for _ in range(32)]
+                # a batch of 32 strings, 16 have been paraphrased, 16 are the original
+                if self.attacks[1]:
+                    attacked = self.char_attack.attack(attacked)
+                if self.attacks[2]:
+                    attacked = self.concat_attack.attack(attacked)
+                classes = predict(attacked, model, tokenizer, embedding)
+                hit_rate += classes.eq(self.target_label).sum() > 0
+        print(f"Attack success rate: {100*hit_rate/total_target_examples}%")
+        # print(f"Model would predict the target for {hit_rate+}")
 
 
 # Not in use
@@ -263,4 +283,10 @@ if __name__ == "__main__":
     )
     mis = Misinformer(train_lime_scores)
     fake_test = [("The quick brown fox jumps", 1), ("Hello world dot com", 2)]
-    mis.attack(model=None, surrogate_model=None, test_set=fake_test)
+    mis.attack(
+        model=None,
+        surrogate_model=None,
+        test_set=fake_test,
+        embedding=None,
+        tokenizer=None,
+    )
