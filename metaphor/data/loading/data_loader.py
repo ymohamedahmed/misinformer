@@ -123,8 +123,8 @@ class MisinformationPheme(Pheme):
         self,
         file_path: str,
         tokenizer: StandardTokenizer,
-        seed=0,
         embedder: nn.Module,
+        seed=0,
         batch_size: int = 128,
         splits: List[float] = [0.6, 0.2, 0.2],
     ):
@@ -135,7 +135,7 @@ class MisinformationPheme(Pheme):
             batch_size=batch_size,
             splits=splits,
             label_fun=self.labels,
-            seed=seed
+            seed=seed,
         )
 
     def labels(self, data: pd.DataFrame) -> List[int]:
