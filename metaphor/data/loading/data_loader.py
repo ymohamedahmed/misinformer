@@ -17,6 +17,7 @@ class Pheme:
         label_fun,
         batch_size: int = 128,
         splits: List[float] = [0.6, 0.2, 0.2],
+        indxs=None,
     ):
         if not (os.path.exists(file_path)):
             raise Exception(f"No such path: {file_path}")
@@ -27,12 +28,16 @@ class Pheme:
         labels = label_fun(data)
         N = len(data["text"].values)
 
-        indxs = np.random.permutation(np.arange(N))
-        l_split, r_split = int(splits[0] * N), int((splits[0] + splits[1]) * N)
-
-        self.train_indxs = indxs[:l_split]
-        self.val_indxs = indxs[l_split:r_split]
-        self.test_indxs = indxs[r_split:]
+        if indxs is None:
+            indxs = np.random.permutation(np.arange(N))
+            l_split, r_split = int(splits[0] * N), int((splits[0] + splits[1]) * N)
+            self.train_indxs = indxs[:l_split]
+            self.val_indxs = indxs[l_split:r_split]
+            self.test_indxs = indxs[r_split:]
+        else:
+            self.train_indxs = indxs[0]
+            self.val_indxs = indxs[1]
+            self.test_indxs = indxs[2]
 
         tokenized_sentences = tokenizer([x for x in data["text"].values])
         embedding = embedder(tokenized_sentences)
@@ -61,11 +66,11 @@ class Pheme:
         self.labels = labels
         self.batch_size = batch_size
 
-    def per_topic(self):
-        """Return data loaders separated by each topic"""
+    def _topic_indxs(self):
         topics = sorted(list(set(self.data["topic"])))
         # list of indices in each topic
-        topic_indxs = [
+        # i.e. [[indices for 0th topic], [indices for 1st topic],...]
+        return [
             [
                 i
                 for i in range(len(self.data["topic"]))
@@ -73,7 +78,12 @@ class Pheme:
             ]
             for j in range(len(topics))
         ]
-        # rewrite the indices in each fold per-topic i.e. [[# the train indices in the 0th topic], ...]
+
+    def per_topic(self):
+        """Return data loaders separated by each topic"""
+
+        # rewrite the indices in each fold per-topic i.e. [[ the train indices in the 0th topic], ...]
+        topic_indxs = self._topic_indxs()
 
         def filter_indices(t):
             return [[y for y in x if y in t] for x in topic_indxs]
@@ -122,6 +132,37 @@ class MisinformationPheme(Pheme):
             batch_size=batch_size,
             splits=splits,
             label_fun=self.labels,
+        )
+
+    def labels(self, data: pd.DataFrame) -> List[int]:
+        # convert labels into integer classes
+        labels = data["veracity"].values
+        mapping = {"false": 0, "unverified": 1, "true": 2}
+        return np.array([mapping[label] for label in labels])
+
+
+class HardPheme(Pheme):
+    """
+    Withhold an entire two topics for the test set from the model
+    """
+
+    def __init__(
+        self,
+        file_path: str,
+        tokenizer: StandardTokenizer,
+        embedder: nn.Module,
+        batch_size: int = 128,
+        splits: List[float] = [0.6, 0.2, 0.2],
+    ):
+        np.random.seed(0)
+        super().__init__(
+            file_path=file_path,
+            tokenizer=tokenizer,
+            embedder=embedder,
+            batch_size=batch_size,
+            splits=splits,
+            label_fun=self.labels,
+            indxs=[train_indxs, val_indxs, test_indxs],
         )
 
     def labels(self, data: pd.DataFrame) -> List[int]:

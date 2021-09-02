@@ -123,7 +123,9 @@ def main():
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
     labels = pheme.labels[pheme.train_indxs]
-    predictions[8] = scipy.stats.mode(labels)[0] * torch.ones((len(labels)))
+    predictions[8] = torch.from_numpy(scipy.stats.mode(labels)[0]) * torch.ones(
+        (len(pheme.labels[pheme.test_indxs]))
+    )
     torch.save(predictions, config.PRED_PATH + "test_predictions.npy")
 
 
