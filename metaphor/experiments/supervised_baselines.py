@@ -151,7 +151,7 @@ def main():
         predictions[13] = torch.from_numpy(scipy.stats.mode(labels)[0]) * torch.ones(
             (len(pheme.labels[pheme.test_indxs]))
         )
-        predictions[14] = pheme.labels[pheme.test_indxs]
+        predictions[14] = torch.from_numpy(pheme.labels[pheme.test_indxs])
         torch.save(predictions, config.PRED_PATH + "test_predictions.npy")
 
 
