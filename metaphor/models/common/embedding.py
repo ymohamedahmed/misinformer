@@ -48,9 +48,10 @@ class Bert(nn.Module):
         return embeddings
 
 
-class Glove(nn.Module):
+class FixedEmbedding(nn.Module):
     def __init__(
         self,
+        gensim_pre_trained_path,
         tokenizer: StandardTokenizer,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -59,8 +60,8 @@ class Glove(nn.Module):
         super().__init__()
         self._tokenizer = tokenizer
         self._embed = None
-        print("Downloading glove twitter vectors")
-        self.model = api.load("glove-twitter-200")
+        print(f"Downloading {gensim_pre_trained_path}")
+        self.model = api.load(gensim_pre_trained_path)
 
     def _construct_embedding(self):
         embedding_dim = self.model.vector_size
@@ -101,6 +102,37 @@ class Glove(nn.Module):
         if self._embed is None:
             self._construct_embedding()
         return self._embed(x)
+
+
+class Word2Vec(FixedEmbedding):
+    def __init__(
+        self,
+        tokenizer: StandardTokenizer,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+    ):
+        super().__init__(
+            tokenizer=tokenizer,
+            device=device,
+            gensim_pre_trained_path="word2vec-google-news-300",
+        )
+
+
+class Glove(FixedEmbedding):
+    def __init__(
+        self,
+        gensim_pre_trained_path,
+        tokenizer: StandardTokenizer,
+        device: torch.device = torch.device(
+            "cuda:0" if torch.cuda.is_available() else "cpu"
+        ),
+    ):
+        super().__init__(
+            tokenizer=tokenizer,
+            device=device,
+            gensim_pre_trained_path="glove-twitter-200",
+        )
 
 
 class RNN(nn.Module):

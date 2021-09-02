@@ -5,6 +5,7 @@ from metaphor.models.common import (
     RNN,
     CNN,
     Glove,
+    Word2Vec,
     MLP,
     MeanPooler,
     MaxPooler,
@@ -25,12 +26,13 @@ import torch
 import wandb
 import config
 
-tokenizers = [CustomBertTokenizer, StandardTokenizer]
-embeddings = [Bert, Glove]
+tokenizers = [CustomBertTokenizer, StandardTokenizer, StandardTokenizer]
+embeddings = [Bert, Glove, Word2Vec]
 models = [MeanPooler, MaxPooler, CNN, RNN]
 layers = [
     [[768, 25, 5, 3], [768, 25, 5, 3], [20 * 210, 25, 5, 3], [256, 25, 5, 3]],
     [[200, 25, 5, 3], [200, 25, 5, 3], [20 * 150, 25, 5, 3], [200, 25, 5, 3]],
+    [[300, 25, 5, 3], [300, 25, 5, 3], [20 * 150, 25, 5, 3], [300, 25, 5, 3]],
 ]
 pool_args = {}
 cnn_args = {
@@ -43,6 +45,11 @@ glove_cnn_args = {
     "output_dim": 150,
     "kernel_sizes": [7],
 }
+word2vec_cnn_args = {
+    "conv_channels": [300, 20],
+    "output_dim": 150,
+    "kernel_sizes": [7],
+}
 bert_rnn_args = {
     "hidden_dim": 256,
     "embedding_size": 768,
@@ -51,9 +58,14 @@ glove_rnn_args = {
     "hidden_dim": 200,
     "embedding_size": 200,
 }
+word2vec_rnn_args = {
+    "hidden_dim": 300,
+    "embedding_size": 300,
+}
 args = [
     [pool_args, {}, cnn_args, bert_rnn_args],
     [pool_args, {}, glove_cnn_args, glove_rnn_args],
+    [pool_args, {}, word2vec_cnn_args, word2vec_rnn_args],
 ]
 
 
@@ -71,20 +83,26 @@ def main():
     file_names = [
         ["bert-mean.npy", "bert-max.npy", "bert-cnn.npy", "bert-rnn.npy"],
         ["glove-mean.npy", "glove-max.npy", "glove-cnn.npy", "glove-rnn.npy"],
+        [
+            "word2vec-mean.npy",
+            "word2vec-max.npy",
+            "word2vec-cnn.npy",
+            "word2vec-rnn.npy",
+        ],
     ]
 
     pheme_path = os.path.join(
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
     )
     predictions = None
-    for i in range(2):
+    for i in range(3):
         tokenizer = tokenizers[i]()
         data = MisinformationPheme(
             file_path=pheme_path, tokenizer=tokenizer, embedder=embeddings[i](tokenizer)
         )
         if predictions is None:
             test_sentences = [data.data["text"].values[i] for i in data.test_indxs]
-            predictions = torch.zeros((9, len(test_sentences)))
+            predictions = torch.zeros((14, len(test_sentences)))
 
         for j in range(4):
             wandb.init(project="metaphor", entity="youmed", reinit=True)
@@ -114,7 +132,7 @@ def main():
                 emb = x[1].to(device)
                 y_prime = classifier(emb, ind).argmax(dim=1).detach().cpu()
                 preds = preds + y_prime.tolist()
-            predictions[(i * 2) + j] = torch.tensor(preds)
+            predictions[(i * len(tokenizers)) + j] = torch.tensor(preds)
 
     # most common baseline
     pheme = MisinformationPheme(
@@ -123,9 +141,10 @@ def main():
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
     labels = pheme.labels[pheme.train_indxs]
-    predictions[8] = torch.from_numpy(scipy.stats.mode(labels)[0]) * torch.ones(
+    predictions[13] = torch.from_numpy(scipy.stats.mode(labels)[0]) * torch.ones(
         (len(pheme.labels[pheme.test_indxs]))
     )
+    predictions[14] = pheme.labels[pheme.test_indxs]
     torch.save(predictions, config.PRED_PATH + "test_predictions.npy")
 
 

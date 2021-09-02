@@ -143,7 +143,8 @@ class MisinformationPheme(Pheme):
 
 class HardPheme(Pheme):
     """
-    Withhold an entire two topics for the test set from the model
+    Withhold a topic/multiples topics for the test set from the model
+
     """
 
     def __init__(
@@ -151,10 +152,24 @@ class HardPheme(Pheme):
         file_path: str,
         tokenizer: StandardTokenizer,
         embedder: nn.Module,
+        witheld_topics,
         batch_size: int = 128,
         splits: List[float] = [0.6, 0.2, 0.2],
     ):
         np.random.seed(0)
+        data = self._filter_dataset(pd.read_csv(file_path))
+        data["text"] = self._preprocess_text(data["text"])
+        test_indxs = [x in witheld_topics for x in data["topic"]]
+        test_indxs = np.arange(len(data))[test_indxs]
+
+        # select which topics to withold
+        # split the remaining points into train and val as normal i.e 3:1 split from the remainder
+        remaining = [i for i in range(len(self.data)) if i not in test_indxs]
+        indxs = np.random.permutation(remaining)
+        split = int(0.75 * len(indxs))
+        train_indxs = indxs[:split]
+        val_indxs = indxs[split:]
+
         super().__init__(
             file_path=file_path,
             tokenizer=tokenizer,
