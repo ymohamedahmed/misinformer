@@ -72,9 +72,9 @@ class CharAttack(Attack):
         return word
 
     def attack(self, sentences: List[str]):
-        scores = []
         attacked = []
         for sentence in sentences:
+            scores = []
             for word in sentence.split():
                 score = self.lime_scores[word] if word in self.lime_scores else 0
                 scores.append(score)
