@@ -190,7 +190,7 @@ class Misinformer(Attack):
         total_target_examples = 0
         hit_rate = 0
         for x in tqdm(test_set):
-            y_prime = predict(x, model, tokenizer, embedding)[0]
+            y_prime = predict([x], model, tokenizer, embedding)[0]
             if y_prime != self.target_label:
                 total_target_examples += 1
                 for word in x.split():
