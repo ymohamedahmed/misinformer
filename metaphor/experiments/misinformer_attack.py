@@ -47,7 +47,6 @@ def main():
     mis.attack(
         model=model,
         test_labels=pheme.labels[pheme.test_indxs],
-        surrogate_model=None,
         test_sentences=test_sentences,
         embedding=embedding,
         tokenizer=tokenizer,

@@ -153,6 +153,8 @@ class Misinformer(Attack):
             True,
         ],  # whether or not to use paraphrase attack, char attack and/or concat attack
         number_of_concats=4,
+        max_levenshtein=2,
+        max_number_of_words=3,
     ):
         # lime scores is of the form word -> [false-score, unverified-score, true-score]
         self.lime_scores = lime_scores
@@ -175,7 +177,11 @@ class Misinformer(Attack):
         for k in self.lime_scores.keys():
             self.lime_scores[k] = agg(self.lime_scores[k])
         self.paraphraser = ParaphraseAttack()
-        self.char_attack = CharAttack(self.lime_scores)
+        self.char_attack = CharAttack(
+            self.lime_scores,
+            max_levenshtein=max_levenshtein,
+            max_number_of_words=max_number_of_words,
+        )
         self.concat_attack = ConcatenationAttack(
             self.lime_scores, number_of_concats=number_of_concats
         )
@@ -184,9 +190,7 @@ class Misinformer(Attack):
     #  and measure how effectiveness changes
     # Option1: fixed attempts
     # Option2: adaptive/genetic algorithm
-    def attack(
-        self, model, surrogate_model, test_sentences, test_labels, tokenizer, embedding
-    ):
+    def attack(self, model, test_sentences, test_labels, tokenizer, embedding):
         # test_set should be the set of test strings e.g. ['hello world', 'quick brown fox', ...]
         scores = []
         total_target_examples = 0
@@ -219,6 +223,8 @@ class Misinformer(Attack):
                     predictions.append(self.target_label)
                 else:
                     predictions.append(y_prime)
+                print(f"Original: {x}")
+                print(f"Attacked: {attacked}")
             else:
                 predictions.append(self.target_label)
         predictions = np.array(predictions)
