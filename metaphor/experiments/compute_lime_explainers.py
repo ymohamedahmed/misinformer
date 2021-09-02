@@ -85,23 +85,22 @@ def main():
     for label in range(3):
         for word in global_explainers[label].keys():
             scores = np.array(global_explainers[label][word])
-            lime_score = np.sqrt(np.maximum(0, np.sum(scores)))
+            lime_score = np.sqrt(np.maximum(10 ** -5, np.sum(scores)))
             #         lime_score = np.sqrt(np.sum(np.abs(scores)))
             if not (word in lime_scores_per_class):
                 lime_scores_per_class[word] = np.zeros((3))
             lime_scores_per_class[word][label] = lime_score
 
-    print(lime_scores_per_class)
+    # print(lime_scores_per_class)
     N = len(lime_scores_per_class.keys())
     p_cj = np.zeros((N, 3))
     lime_scores = np.zeros((N, 3))
     for i, word in enumerate(lime_scores_per_class.keys()):
         p_cj[i] = lime_scores_per_class[word] / lime_scores_per_class[word].sum()
-        print(lime_scores_per_class[word])
+        # print(lime_scores_per_class[word])
         lime_scores[i, :] = lime_scores_per_class[word]
 
     # compute entropy
-    print(p_cj)
     H = (-p_cj * np.log(p_cj + (10 ** -8))).sum(axis=1)
     coeff = 1 - (H - np.min(H)) / (np.max(H) - np.min(H))
     coeff = coeff.reshape((coeff.shape[0], 1))

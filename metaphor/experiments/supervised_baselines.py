@@ -121,6 +121,6 @@ def main():
     predictions[8] = scipy.stats.mode(labels)[0]*torch.ones((len(labels)))
     torch.save(predictions, config.PRED_PATH + "test_predictions.npy")
 
-
+ #  retrain on the harder task 
 if __name__ == "__main__":
     main()

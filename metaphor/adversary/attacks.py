@@ -158,14 +158,14 @@ class Misinformer(Attack):
             MisinformerMode.UNVERIFIED: 1,
             MisinformerMode.TRUE: 2,
         }
-        target = (
+        agg = (
             lambda array: np.mean(array)
             if target == MisinformerMode.UNTARGETED
             else array[indices[target]]
         )
         self.attacks = attacks
         for k in self.lime_scores.keys():
-            self.lime_scores[k] = target(self.lime_scores_k)
+            self.lime_scores[k] = agg(self.lime_scores[k])
         self.paraphraser = ParaphraseAttack()
         self.char_attack = CharAttack(self.lime_scores)
         self.concat_attack = ConcatenationAttack(self.lime_scores)
