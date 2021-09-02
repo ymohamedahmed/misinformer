@@ -122,7 +122,6 @@ class Word2Vec(FixedEmbedding):
 class Glove(FixedEmbedding):
     def __init__(
         self,
-        gensim_pre_trained_path,
         tokenizer: StandardTokenizer,
         device: torch.device = torch.device(
             "cuda:0" if torch.cuda.is_available() else "cpu"

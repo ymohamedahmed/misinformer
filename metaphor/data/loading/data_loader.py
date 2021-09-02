@@ -5,6 +5,7 @@ from metaphor.models.common.tokenize import StandardTokenizer
 import torch
 import torch.nn as nn
 from typing import Tuple, List
+from itertools import chain, combinations
 import re
 
 
@@ -16,12 +17,13 @@ class Pheme:
         embedder: nn.Module,
         label_fun,
         batch_size: int = 128,
+        seed=0,
         splits: List[float] = [0.6, 0.2, 0.2],
         indxs=None,
     ):
         if not (os.path.exists(file_path)):
             raise Exception(f"No such path: {file_path}")
-        np.random.seed(0)
+        np.random.seed(seed)
         data = self._filter_dataset(pd.read_csv(file_path))
         data["text"] = self._preprocess_text(data["text"])
         self.data = data
@@ -121,6 +123,7 @@ class MisinformationPheme(Pheme):
         self,
         file_path: str,
         tokenizer: StandardTokenizer,
+        seed=0,
         embedder: nn.Module,
         batch_size: int = 128,
         splits: List[float] = [0.6, 0.2, 0.2],
@@ -132,6 +135,7 @@ class MisinformationPheme(Pheme):
             batch_size=batch_size,
             splits=splits,
             label_fun=self.labels,
+            seed=seed
         )
 
     def labels(self, data: pd.DataFrame) -> List[int]:
@@ -152,13 +156,16 @@ class HardPheme(Pheme):
         file_path: str,
         tokenizer: StandardTokenizer,
         embedder: nn.Module,
-        witheld_topics,
+        seed,
         batch_size: int = 128,
         splits: List[float] = [0.6, 0.2, 0.2],
     ):
-        np.random.seed(0)
+        np.random.seed(seed)
+        # select withheld topics randomly
         data = self._filter_dataset(pd.read_csv(file_path))
         data["text"] = self._preprocess_text(data["text"])
+        witholdable_topics = self._topic_groups(data)
+        witheld_topics = np.random.choice(witholdable_topics)
         test_indxs = [x in witheld_topics for x in data["topic"]]
         test_indxs = np.arange(len(data))[test_indxs]
 
@@ -179,6 +186,27 @@ class HardPheme(Pheme):
             label_fun=self.labels,
             indxs=[train_indxs, val_indxs, test_indxs],
         )
+
+    from itertools import chain, combinations
+
+    def _powerset(self, iterable):
+        s = list(iterable)
+        return chain.from_iterable(combinations(s, r) for r in range(len(s) + 1))
+
+    def _topic_groups(self, data):
+        # returns the groups of topics with enough datapoints to make a large enough test
+        # considered to be any group covering between 15% and 25% of the dataset
+        gr = 100 * data.groupby("topic").count()["veracity"] / len(data)
+        pset = list(self._powerset(gr.keys()))
+        valid_topics = []
+        for combo in pset:
+            coverage = 0
+            for x in combo:
+                coverage += gr[x]
+            if coverage > 15 and coverage < 25:
+                valid_topics.append(combo)
+
+        return valid_topics
 
     def labels(self, data: pd.DataFrame) -> List[int]:
         # convert labels into integer classes

@@ -19,6 +19,7 @@ from metaphor.data.loading.data_loader import (
     MisinformationPheme,
     TopicPheme,
     PerTopicMisinformation,
+    HardPheme,
 )
 import scipy.stats
 import os
@@ -95,57 +96,63 @@ def main():
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
     )
     predictions = None
-    for i in range(3):
-        tokenizer = tokenizers[i]()
-        data = MisinformationPheme(
-            file_path=pheme_path, tokenizer=tokenizer, embedder=embeddings[i](tokenizer)
+    for seed in range(1):
+        for i in range(3):
+            tokenizer = tokenizers[i]()
+            data = MisinformationPheme(
+                file_path=pheme_path,
+                tokenizer=tokenizer,
+                embedder=embeddings[i](tokenizer),
+                seed=seed,
+            )
+            if predictions is None:
+                test_sentences = [data.data["text"].values[i] for i in data.test_indxs]
+                predictions = torch.zeros((14, len(test_sentences)))
+
+            for j in range(4):
+                wandb.init(project="metaphor", entity="youmed", reinit=True)
+                args[i][j]["tokenizer"] = tokenizer
+                wandb_config = wandb.config
+                wandb_config.args = args[i][j]
+                wandb_config.layers = layers[i][j]
+                classifier = MisinformationModel(
+                    models[j](**args[i][j]), MLP(layers[i][j])
+                )
+                wandb.watch(classifier)
+                classifier.to(device)
+                print(classifier)
+                trainer = ClassifierTrainer(**trainer_args)
+                results = trainer.fit(classifier, data.train, data.val)
+                print(results)
+                print(
+                    f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}"
+                )
+
+                # log results and save model
+                torch.save(
+                    classifier.state_dict(),
+                    config.PATH + file_names[i][j],
+                )
+                preds = []
+                for x, y in data.test:
+                    ind = x[0].to(device)
+                    emb = x[1].to(device)
+                    y_prime = classifier(emb, ind).argmax(dim=1).detach().cpu()
+                    preds = preds + y_prime.tolist()
+                predictions[(i * len(tokenizers)) + j] = torch.tensor(preds)
+
+        # most common baseline
+        pheme = MisinformationPheme(
+            file_path=pheme_path,
+            tokenizer=lambda x: x,
+            embedder=lambda x: torch.zeros((len(x), 200)),
         )
-        if predictions is None:
-            test_sentences = [data.data["text"].values[i] for i in data.test_indxs]
-            predictions = torch.zeros((14, len(test_sentences)))
-
-        for j in range(4):
-            wandb.init(project="metaphor", entity="youmed", reinit=True)
-            args[i][j]["tokenizer"] = tokenizer
-            wandb_config = wandb.config
-            wandb_config.args = args[i][j]
-            wandb_config.layers = layers[i][j]
-            classifier = MisinformationModel(models[j](**args[i][j]), MLP(layers[i][j]))
-            wandb.watch(classifier)
-            classifier.to(device)
-            print(classifier)
-            trainer = ClassifierTrainer(**trainer_args)
-            results = trainer.fit(classifier, data.train, data.val)
-            print(results)
-            print(
-                f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}"
-            )
-
-            # log results and save model
-            torch.save(
-                classifier.state_dict(),
-                config.PATH + file_names[i][j],
-            )
-            preds = []
-            for x, y in data.test:
-                ind = x[0].to(device)
-                emb = x[1].to(device)
-                y_prime = classifier(emb, ind).argmax(dim=1).detach().cpu()
-                preds = preds + y_prime.tolist()
-            predictions[(i * len(tokenizers)) + j] = torch.tensor(preds)
-
-    # most common baseline
-    pheme = MisinformationPheme(
-        file_path=pheme_path,
-        tokenizer=lambda x: x,
-        embedder=lambda x: torch.zeros((len(x), 200)),
-    )
-    labels = pheme.labels[pheme.train_indxs]
-    predictions[13] = torch.from_numpy(scipy.stats.mode(labels)[0]) * torch.ones(
-        (len(pheme.labels[pheme.test_indxs]))
-    )
-    predictions[14] = pheme.labels[pheme.test_indxs]
-    torch.save(predictions, config.PRED_PATH + "test_predictions.npy")
+        labels = pheme.labels[pheme.train_indxs]
+        predictions[13] = torch.from_numpy(scipy.stats.mode(labels)[0]) * torch.ones(
+            (len(pheme.labels[pheme.test_indxs]))
+        )
+        predictions[14] = pheme.labels[pheme.test_indxs]
+        torch.save(predictions, config.PRED_PATH + "test_predictions.npy")
 
 
 #  retrain on the harder task
