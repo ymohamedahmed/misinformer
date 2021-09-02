@@ -171,7 +171,7 @@ class HardPheme(Pheme):
 
         # select which topics to withold
         # split the remaining points into train and val as normal i.e 3:1 split from the remainder
-        remaining = [i for i in range(len(self.data)) if i not in test_indxs]
+        remaining = [i for i in range(len(data)) if i not in test_indxs]
         indxs = np.random.permutation(remaining)
         split = int(0.75 * len(indxs))
         train_indxs = indxs[:split]

@@ -20,6 +20,10 @@ import torch
 from metaphor.data.loading.data_loader import Pheme, MisinformationPheme
 import config
 
+# TODO: perform on each model
+# Repeat for different perturbation control in the fixed attack case
+# Perform genetic adversarial attack and record the number of attacks before change
+
 
 def main():
     train_lime_scores = load_obj(
@@ -44,12 +48,26 @@ def main():
     model.load_state_dict(torch.load(config.PATH + "bert-mean.npy"))
     embedding.to(device)
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
-    mis.attack(
+    # mis.attack(
+    #     model=model,
+    #     test_labels=pheme.labels[pheme.test_indxs],
+    #     test_sentences=test_sentences,
+    #     embedding=embedding,
+    #     tokenizer=tokenizer,
+    # )
+    sur_model = MisinformationModel(MaxPooler(**args), MLP(layers))
+    sur_model.load_state_dict(torch.load(config.PATH + "bert-max.npy"))
+    sur_tok = tokenizer
+    sur_emb = embedding
+    mis.genetic_attack(
         model=model,
-        test_labels=pheme.labels[pheme.test_indxs],
+        surrogate_model=sur_model,
         test_sentences=test_sentences,
-        embedding=embedding,
+        test_labels=pheme.labels[pheme.test_indxs],
         tokenizer=tokenizer,
+        embedding=embedding,
+        surrogate_tokenizer=sur_tok,
+        surrogate_embedding=sur_emb,
     )
 
 

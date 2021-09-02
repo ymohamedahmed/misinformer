@@ -124,9 +124,6 @@ def main():
                 trainer = ClassifierTrainer(**trainer_args)
                 results = trainer.fit(classifier, data.train, data.val)
                 print(results)
-                print(
-                    f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}"
-                )
 
                 # log results and save model
                 torch.save(
@@ -140,7 +137,16 @@ def main():
                     y_prime = classifier(emb, ind).argmax(dim=1).detach().cpu()
                     preds = preds + y_prime.tolist()
                 predictions[(i * len(tokenizers)) + j] = torch.tensor(preds)
-
+                test_acc = (
+                    torch.tensor(preds)
+                    .eq(torch.from_numpy(data.labels[data.test_indxs]))
+                    .float()
+                    .mean()
+                    .item()
+                )
+                print(
+                    f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}, test acc: {test_acc}"
+                )
         # most common baseline
         pheme = MisinformationPheme(
             file_path=pheme_path,
