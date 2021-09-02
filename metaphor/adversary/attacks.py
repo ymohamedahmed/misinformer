@@ -3,6 +3,7 @@ import torch.nn as nn
 import numpy as np
 from typing import List
 from metaphor.models.common.tokenize import Tokenizer
+from metaphor.utils.utils import load_obj
 from enum import Enum
 import gensim.downloader as api
 from gensim.utils import tokenize
@@ -257,7 +258,7 @@ class KSynonymAttack(Attack):
 
 
 if __name__ == "__main__":
-    train_lime_scores = metaphor.utils.utils.load_obj(
+    train_lime_scores = load_obj(
         "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/train_lime_scores"
     )
     mis = Misinformer(train_lime_scores)
