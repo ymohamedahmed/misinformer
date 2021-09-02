@@ -110,9 +110,10 @@ def main():
             )
             preds = []
             for x, y in data.test:
-                # x = x.to(device)
-                y_prime = classifier(x).argmax(dim=1)
-                preds.append(y_prime)
+                ind = x[0].to(device)
+                emb = x[1].to(device)
+                y_prime = classifier(emb, ind).argmax(dim=1).detach().cpu()
+                preds = preds + y_prime.tolist()
             predictions[(i * 2) + j] = torch.tensor(preds)
 
     # most common baseline

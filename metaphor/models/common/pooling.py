@@ -30,7 +30,7 @@ class MaxPooler(nn.Module):
     def forward(self, x: torch.Tensor, indxs: torch.Tensor):
         return torch.max(
             x * self.tokenizer.mask[indxs].unsqueeze(2).to(self.device), dim=1
-        )
+        )[0]
 
 
 class MisinformationModel(nn.Module):
