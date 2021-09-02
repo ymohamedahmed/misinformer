@@ -150,6 +150,7 @@ class Misinformer(Attack):
             True,
             True,
         ],  # whether or not to use paraphrase attack, char attack and/or concat attack
+        number_of_concats=4,
     ):
         # lime scores is of the form word -> [false-score, unverified-score, true-score]
         self.lime_scores = lime_scores
@@ -168,7 +169,9 @@ class Misinformer(Attack):
             self.lime_scores[k] = agg(self.lime_scores[k])
         self.paraphraser = ParaphraseAttack()
         self.char_attack = CharAttack(self.lime_scores)
-        self.concat_attack = ConcatenationAttack(self.lime_scores)
+        self.concat_attack = ConcatenationAttack(
+            self.lime_scores, number_of_concats=number_of_concats
+        )
 
     def attack(self, model, surrogate_model, test_set):
         # test_set should be the set of strings and labels
