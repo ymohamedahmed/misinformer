@@ -110,8 +110,8 @@ def main():
             )
             preds = []
             for x, y in data.test:
-                x = x.to(device)
-                y_prime = classifier(x)
+                # x = x.to(device)
+                y_prime = classifier(x).argmax(dim=1)
                 preds.append(y_prime)
             predictions[(i * 2) + j] = torch.tensor(preds)
 
