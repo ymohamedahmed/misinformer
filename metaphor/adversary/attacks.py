@@ -9,6 +9,7 @@ from gensim.utils import tokenize
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import string
+import metaphor
 
 
 def softmax(x):
@@ -38,32 +39,35 @@ class ConcatenationAttack(Attack):
             # sample concatenation strings
             indxs = np.random.choice(
                 len(self.lime_scores.keys()),
-                size=self.number_of_concat,
+                size=self.number_of_concats,
                 p=softmax(self.lime_scores.values),
             )
-            attack = self.lime_scores.keys()[indxs]
+            attack = list(self.lime_scores.keys())[indxs]
             attacked_sentences.append(x + " " + attack)
         return attacked_sentences
 
 
 class CharAttack(Attack):
-    def __init__(self, lime_score, max_levenshtein=2, max_number_of_words=3):
-        self.lime_score = lime_score
+    def __init__(self, lime_scores, max_levenshtein=2, max_number_of_words=3):
+        self.lime_scores = lime_scores
         self.max_lev = max_levenshtein
+        self.max_number_of_words = max_number_of_words
 
     def _attack(self, word):
-        lower_chars = string.ascii_lowercase
-        for _ in self.max_lev:
+        lower_chars = list(string.ascii_lowercase)
+        for _ in range(self.max_lev):
             # insertion, deletion or sub
-            ind = np.random.randint(len(word))
-            # insertion
-            word = word[:ind] + np.random.choice(lower_chars) + word[ind:]
-
-            # deletion
-            word = word[:ind] + word[ind + 1 :]
-
-            # sub
-            word = word[:ind] + np.random.choice(lower_chars) + word[ind + 1 :]
+            ind = np.random.randint(low=0, high=len(word))
+            p = np.random.uniform()
+            if p < 1 / 3:
+                # insertion
+                word = word[:ind] + np.random.choice(lower_chars) + word[ind:]
+            elif p < 2 / 3:
+                # deletion
+                word = word[:ind] + word[ind + 1 :]
+            else:
+                # sub
+                word = word[:ind] + np.random.choice(lower_chars) + word[ind + 1 :]
         return word
 
     def attack(self, sentences: List[str]):
@@ -71,17 +75,13 @@ class CharAttack(Attack):
         attacked = []
         for sentence in sentences:
             for word in sentence.split():
-                score = (
-                    self.target(self.lime_scores[word])
-                    if word in self.lime_scores
-                    else 0
-                )
+                score = self.lime_scores[word] if word in self.lime_scores else 0
                 scores.append(score)
             scores = np.array(scores)
             attack_words_indxs = np.random.choice(
                 a=len(scores), size=self.max_number_of_words, p=softmax(scores)
             )
-            attacked_sentence = sentences.copy().split()
+            attacked_sentence = sentence.split()
             for i in attack_words_indxs:
                 attacked_sentence[i] = self._attack(attacked_sentence[i])
 
@@ -178,14 +178,14 @@ class Misinformer(Attack):
         scores = []
         for x, y in test_set:
             for word in x.split():
-                score = self.lime_scores[word] if word in self.lime_scores else 0
+                score = self.lime_scores[word] if word in self.lime_scores else 10 ** -5
                 scores.append(score)
 
             if self.attacks[0]:
-                attacked = self.paraphrase.attack(x) + [x.copy() for _ in range(16)]
+                attacked = self.paraphraser.attack([x]) + [x for _ in range(16)]
             else:
-                attacked = [x.copy() for _ in range(32)]
-            # a batch of 32 strings, 16 have been paraphrase, 16 are the original
+                attacked = [x for _ in range(32)]
+            # a batch of 32 strings, 16 have been paraphrased, 16 are the original
             if self.attacks[1]:
                 attacked = self.char_attack.attack(attacked)
             if self.attacks[2]:
@@ -254,3 +254,12 @@ class KSynonymAttack(Attack):
                     new_sent[j] = np.random.choice(synonyms)
                 attacked_sentences.append(" ".join(new_sent))
         return attacked_sentences
+
+
+if __name__ == "__main__":
+    train_lime_scores = metaphor.utils.utils.load_obj(
+        "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/train_lime_scores"
+    )
+    mis = Misinformer(train_lime_scores)
+    fake_test = [("The quick brown fox jumps", 1), ("Hello world dot com", 2)]
+    mis.attack(model=None, surrogate_model=None, test_set=fake_test)
