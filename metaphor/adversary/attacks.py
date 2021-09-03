@@ -289,7 +289,6 @@ class Misinformer(Attack):
             print(char_mask[1])
             print(concat_mask[0])
             print(concat_mask[1])
-            assert len(parents[0].split()) == len(parents[1].split())
             child_char_mask = np.zeros(len(char_mask[0]))
             child_concat_mask = np.zeros(len(concat_mask[0]))
             child_sentence = []
@@ -328,7 +327,6 @@ class Misinformer(Attack):
             if char_mask.sum() > 0 and len(sent) == len(char_mask):
                 reset_ind = np.random.choice(len(sent), p=char_mask / char_mask.sum())
                 sent[reset_ind] = original.split()[reset_ind]
-                assert not (sent[reset_ind].isspace()), f"{original} {sent}"
                 char_mask[reset_ind] = 0
                 char_mask[mutate_ind] = 1
                 sent[mutate_ind] = self.char_attack._attack(sent[mutate_ind])

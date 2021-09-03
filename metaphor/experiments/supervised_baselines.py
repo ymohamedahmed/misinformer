@@ -8,6 +8,7 @@ from metaphor.models.common import (
     Word2Vec,
     MLP,
     MeanPooler,
+    LogisticRegressor,
     MaxPooler,
     CustomBertTokenizer,
     StandardTokenizer,
@@ -29,12 +30,15 @@ import config
 
 tokenizers = [CustomBertTokenizer, StandardTokenizer, StandardTokenizer]
 embeddings = [Bert, Glove, Word2Vec]
-models = [MeanPooler, MaxPooler, CNN, RNN]
+aggregators = [MeanPooler, MaxPooler, CNN, RNN]
+classifiers = [MLP, LogisticRegressor]
 layers = [
     [[768, 25, 5, 3], [768, 25, 5, 3], [20 * 210, 25, 5, 3], [256, 25, 5, 3]],
     [[200, 25, 5, 3], [200, 25, 5, 3], [20 * 150, 25, 5, 3], [200, 25, 5, 3]],
     [[300, 25, 5, 3], [300, 25, 5, 3], [20 * 150, 25, 5, 3], [300, 25, 5, 3]],
 ]
+# TOTAL models: 24
+
 pool_args = {}
 cnn_args = {
     "conv_channels": [768, 20],
@@ -95,8 +99,9 @@ def main():
     pheme_path = os.path.join(
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
     )
-    predictions = None
     NUM_SEEDS = 5
+    predictions = None
+    baselines_and_labels = None
     for seed in range(NUM_SEEDS):
         for i in range(3):
             tokenizer = tokenizers[i]()
@@ -108,46 +113,64 @@ def main():
             )
             if predictions is None:
                 test_sentences = [data.data["text"].values[i] for i in data.test_indxs]
-                predictions = torch.zeros((14, len(test_sentences)))
+                predictions = torch.zeros(
+                    (
+                        NUM_SEEDS,
+                        len(tokenizers),
+                        len(aggregators),
+                        len(classifiers),
+                        len(test_sentences),
+                    )
+                )
+                baselines_and_labels = torch.zeros((NUM_SEEDS, 2, len(test_sentences)))
 
             for j in range(4):
-                wandb.init(project="metaphor", entity="youmed", reinit=True)
-                args[i][j]["tokenizer"] = tokenizer
-                wandb_config = wandb.config
-                wandb_config.args = args[i][j]
-                wandb_config.layers = layers[i][j]
-                classifier = MisinformationModel(
-                    models[j](**args[i][j]), MLP(layers[i][j])
-                )
-                wandb.watch(classifier)
-                classifier.to(device)
-                print(classifier)
-                trainer = ClassifierTrainer(**trainer_args)
-                results = trainer.fit(classifier, data.train, data.val)
-                print(results)
+                for classifier_ind in range(2):
+                    wandb.init(project="metaphor", entity="youmed", reinit=True)
+                    args[i][j]["tokenizer"] = tokenizer
+                    wandb_config = wandb.config
+                    wandb_config.args = args[i][j]
+                    wandb_config.layers = layers[i][j]
+                    classifier_model = (
+                        MLP(layers[i][j])
+                        if classifier_ind == 0
+                        else LogisticRegressor(layers[i][j][0])
+                    )
+                    classifier = MisinformationModel(
+                        aggregators[j](**args[i][j]), classifier_model
+                    )
+                    wandb.watch(classifier)
+                    classifier.to(device)
+                    print(classifier)
+                    trainer = ClassifierTrainer(**trainer_args)
+                    results = trainer.fit(classifier, data.train, data.val)
+                    print(results)
 
-                # log results and save model
-                torch.save(
-                    classifier.state_dict(),
-                    config.PATH + f"seed_{seed}_" + file_names[i][j],
-                )
-                preds = []
-                for x, y in data.test:
-                    ind = x[0].to(device)
-                    emb = x[1].to(device)
-                    y_prime = classifier(emb, ind).argmax(dim=1).detach().cpu()
-                    preds = preds + y_prime.tolist()
-                predictions[(i * len(tokenizers)) + j] = torch.tensor(preds)
-                test_acc = (
-                    torch.tensor(preds)
-                    .eq(torch.from_numpy(data.labels[data.test_indxs]))
-                    .float()
-                    .mean()
-                    .item()
-                )
-                print(
-                    f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}, test acc: {test_acc}"
-                )
+                    # log results and save model
+                    torch.save(
+                        classifier.state_dict(),
+                        config.PATH
+                        + f"seed_{seed}_"
+                        + file_names[i][j]
+                        + type(classifier_model).__name__,
+                    )
+                    preds = []
+                    for x, y in data.test:
+                        ind = x[0].to(device)
+                        emb = x[1].to(device)
+                        y_prime = classifier(emb, ind).argmax(dim=1).detach().cpu()
+                        preds = preds + y_prime.tolist()
+                    predictions[(i * len(tokenizers)) + j] = torch.tensor(preds)
+                    test_acc = (
+                        torch.tensor(preds)
+                        .eq(torch.from_numpy(data.labels[data.test_indxs]))
+                        .float()
+                        .mean()
+                        .item()
+                    )
+                    print(
+                        f"max train acc: {max(results['train_accuracy'])}, val acc: {max(results['validation_accuracy'])}, test acc: {test_acc}"
+                    )
         # most common baseline
         pheme = MisinformationPheme(
             file_path=pheme_path,
@@ -155,11 +178,14 @@ def main():
             embedder=lambda x: torch.zeros((len(x), 200)),
         )
         labels = pheme.labels[pheme.train_indxs]
-        predictions[13] = torch.from_numpy(scipy.stats.mode(labels)[0]) * torch.ones(
-            (len(pheme.labels[pheme.test_indxs]))
+        baselines_and_labels[seed][0] = torch.from_numpy(
+            scipy.stats.mode(labels)[0]
+        ) * torch.ones((len(pheme.labels[pheme.test_indxs])))
+        baselines_and_labels[seed][1] = torch.from_numpy(pheme.labels[pheme.test_indxs])
+        torch.save(predictions, config.PRED_PATH + f"test_predictions.npy")
+        torch.save(
+            baselines_and_labels, config.PRED_PATH + f"test_baselines_and_label.npy"
         )
-        predictions[14] = torch.from_numpy(pheme.labels[pheme.test_indxs])
-        torch.save(predictions, config.PRED_PATH + f"test_predictions_seed_{seed}.npy")
 
 
 #  retrain on the harder task
