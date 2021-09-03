@@ -240,7 +240,7 @@ class LogisticRegressor(nn.Module):
     def __init__(self, input_dim: int, output_dim=3):
         super().__init__()
         layer = nn.Linear(input_dim, output_dim)
-        self.model = nn.Sequential(*layer, nn.Softmax())
+        self.model = nn.Sequential(layer, nn.Softmax())
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
