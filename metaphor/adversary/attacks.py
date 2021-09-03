@@ -360,6 +360,78 @@ class Misinformer(Attack):
             sent[mutate_ind] = attack[0]
         return " ".join(sent), original, paraphrased, char_mask, concat_mask
 
+    def _new_generation(
+        self,
+        generation,
+        seletion_probability,
+        orig_sentences,
+        paraphrased,
+        char_masks,
+        concat_masks,
+        fitness,
+    ):
+        # update the masks (paraphrased, char_masks, concat_masks)
+        new_generation = []
+        new_originals = []
+        new_paraphrased = np.zeros(32)
+        new_char_masks = []
+        new_concat_masks = []
+        for gen_ind in range(len(generation)):
+
+            # choose two parents for each sentence
+            parents_indxs = np.random.choice(
+                len(generation), p=selection_probability, size=2
+            )
+            #  parents, originals, paraphrased, char_mask, concat_mask, fitnesses
+            print(fitness)
+            print(fitness[parents_indxs])
+            print(parents_indxs)
+            (
+                child,
+                original,
+                child_paraphrased,
+                char_attack,
+                concat_attack,
+            ) = self._breed(
+                [generation[i] for i in parents_indxs],
+                [orig_sentences[i] for i in parents_indxs],
+                paraphrased[parents_indxs],
+                [char_masks[i] for i in parents_indxs],
+                [concat_masks[i] for i in parents_indxs],
+                fitness[parents_indxs],
+            )
+            logging.info(
+                f"Genetic Attack: bred parents: {[generation[i] for i in parents_indxs]}"
+            )
+            logging.info(f"Genetic Attack: child: {child}")
+            (
+                child,
+                original,
+                child_paraphrased,
+                char_attack,
+                concat_attack,
+            ) = self._mutate(
+                child,
+                original,
+                child_paraphrased,
+                char_attack.copy(),
+                concat_attack.copy(),
+            )
+            logging.info(f"Genetic Attack: child mutated into: {child}")
+
+            new_generation.append(child)
+            new_char_masks.append(char_attack)
+            new_concat_masks.append(concat_attack)
+            new_originals.append(original)
+            new_paraphrased[gen_ind] = child_paraphrased
+        return (
+            new_generation,
+            new_originals,
+            new_paraphrased,
+            new_char_masks,
+            new_concat_masks,
+        )
+
     # Option2: adaptive/genetic algorithm
     def genetic_attack(
         self,
@@ -372,10 +444,12 @@ class Misinformer(Attack):
         surrogate_tokenizer,
         surrogate_embedding,
         max_generations=10,
+        batch_size=128,
     ):
         model_preds = []
         attacked_predictions = np.zeros(len(test_labels))
         evaluations_per_sentence = []
+        # batched approach: batch of generations => batch of elite members =>
         # only do this for cases where model doesn't predict y_prime as target
         for sentence_ind, sentence in enumerate(tqdm(test_sentences)):
             evaluations = 0
@@ -423,71 +497,20 @@ class Misinformer(Attack):
                     # if not, compute selection prob. using softmax of fitnesses
                     p = torch.nn.functional.softmax(fitness, dim=0).detach().numpy()
 
-                    # update the masks (paraphrased, char_masks, concat_masks)
-                    new_generation = []
-                    new_originals = []
-                    new_paraphrased = np.zeros(32)
-                    new_char_masks = []
-                    new_concat_masks = []
-                    for gen_ind in range(len(generation)):
-
-                        # choose two parents for each sentence
-                        parents_indxs = np.random.choice(len(generation), p=p, size=2)
-                        #  parents, originals, paraphrased, char_mask, concat_mask, fitnesses
-                        print(fitness)
-                        print(fitness[parents_indxs])
-                        print(parents_indxs)
-                        (
-                            child,
-                            original,
-                            child_paraphrased,
-                            char_attack,
-                            concat_attack,
-                        ) = self._breed(
-                            [generation[i] for i in parents_indxs],
-                            [orig_sentences[i] for i in parents_indxs],
-                            paraphrased[parents_indxs],
-                            [char_masks[i] for i in parents_indxs],
-                            [concat_masks[i] for i in parents_indxs],
-                            fitness[parents_indxs],
-                        )
-                        logging.info(
-                            f"Genetic Attack: bred parents: {[generation[i] for i in parents_indxs]}"
-                        )
-                        logging.info(f"Genetic Attack: child: {child}")
-                        (
-                            child,
-                            original,
-                            child_paraphrased,
-                            char_attack,
-                            concat_attack,
-                        ) = self._mutate(
-                            child,
-                            original,
-                            child_paraphrased,
-                            char_attack.copy(),
-                            concat_attack.copy(),
-                        )
-                        logging.info(f"Genetic Attack: child mutated into: {child}")
-
-                        new_generation.append(child)
-                        new_char_masks.append(char_attack)
-                        new_concat_masks.append(concat_attack)
-                        new_originals.append(original)
-                        new_paraphrased[gen_ind] = child_paraphrased
-
                     (
                         generation,
                         orig_sentences,
                         paraphrased,
                         char_masks,
                         concat_masks,
-                    ) = (
-                        new_generation,
-                        new_originals,
-                        new_paraphrased,
-                        new_char_masks,
-                        new_concat_masks,
+                    ) = self._new_generation(
+                        generation=generation,
+                        seletion_probability=p,
+                        orig_sentences=orig_sentences,
+                        paraphrased=paraphrased,
+                        char_masks=char_masks,
+                        concat_masks=concat_masks,
+                        fitness=fitness,
                     )
             evaluations_per_sentence.append(evaluations)
 

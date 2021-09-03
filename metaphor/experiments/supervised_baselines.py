@@ -37,7 +37,7 @@ layers = [
     [[200, 25, 5, 3], [200, 25, 5, 3], [20 * 150, 25, 5, 3], [200, 25, 5, 3]],
     [[300, 25, 5, 3], [300, 25, 5, 3], [20 * 150, 25, 5, 3], [300, 25, 5, 3]],
 ]
-# TOTAL models: 24
+# TOTAL models: 24*5=120
 
 pool_args = {}
 cnn_args = {
@@ -86,13 +86,13 @@ def main():
         "loss": nn.CrossEntropyLoss(),
     }
     file_names = [
-        ["bert-mean.npy", "bert-max.npy", "bert-cnn.npy", "bert-rnn.npy"],
-        ["glove-mean.npy", "glove-max.npy", "glove-cnn.npy", "glove-rnn.npy"],
+        ["bert-mean", "bert-max", "bert-cnn", "bert-rnn"],
+        ["glove-mean", "glove-max", "glove-cnn", "glove-rnn"],
         [
-            "word2vec-mean.npy",
-            "word2vec-max.npy",
-            "word2vec-cnn.npy",
-            "word2vec-rnn.npy",
+            "word2vec-mean",
+            "word2vec-max",
+            "word2vec-cnn",
+            "word2vec-rnn",
         ],
     ]
 
@@ -150,9 +150,10 @@ def main():
                     torch.save(
                         classifier.state_dict(),
                         config.PATH
-                        + f"seed_{seed}_"
+                        + f"seed-{seed}-"
                         + file_names[i][j]
-                        + type(classifier_model).__name__,
+                        + ("mlp" if classifier_ind == 0 else "logistic-regressor")
+                        + ".npy",
                     )
                     preds = []
                     for x, y in data.test:
@@ -176,16 +177,15 @@ def main():
             file_path=pheme_path,
             tokenizer=lambda x: x,
             embedder=lambda x: torch.zeros((len(x), 200)),
+            seed=seed,
         )
         labels = pheme.labels[pheme.train_indxs]
         baselines_and_labels[seed][0] = torch.from_numpy(
             scipy.stats.mode(labels)[0]
         ) * torch.ones((len(pheme.labels[pheme.test_indxs])))
         baselines_and_labels[seed][1] = torch.from_numpy(pheme.labels[pheme.test_indxs])
-        torch.save(predictions, config.PRED_PATH + f"test_predictions.npy")
-        torch.save(
-            baselines_and_labels, config.PRED_PATH + f"test_baselines_and_label.npy"
-        )
+    torch.save(predictions, config.PRED_PATH + f"test_predictions.npy")
+    torch.save(baselines_and_labels, config.PRED_PATH + f"test_baselines_and_label.npy")
 
 
 #  retrain on the harder task
