@@ -65,7 +65,7 @@ class CharAttack(Attack):
 
     def _attack(self, word):
         lower_chars = list(string.ascii_lowercase)
-        for _ in range(self.max_lev):
+        for _ in range(min(self.max_lev, len(word) - 1)):
             # insertion, deletion or sub
             if len(word) > 0:
                 ind = np.random.randint(low=0, high=len(word))
@@ -220,6 +220,11 @@ class Misinformer(Attack):
                 attacked, char_masks = self.char_attack.attack(attacked)
             if self.attacks[2]:
                 attacked, concat_masks = self.concat_attack.attack(attacked)
+
+        # ensure that char masks are long enough (i.e. have zeros where the concatenated words are)
+        for i in range(len(char_masks)):
+            diff = len(concat_masks[i]) - len(char_masks[i])
+            char_masks[i] = np.append(char_masks[i], np.zeros((diff)))
         return attacked, (originals, paraphrased, char_masks, concat_masks)
 
     # Option1: fixed attempts
@@ -266,11 +271,14 @@ class Misinformer(Attack):
         if paraphrased[0] == paraphrased[1] == 0:
             print(parents[0])
             print(parents[1])
+            print(char_mask[0])
+            print(char_mask[1])
+            print(concat_mask[0])
+            print(concat_mask[1])
             assert len(parents[0].split()) == len(parents[1].split())
-            child_char_mask = char_mask.copy()
-            child_concat_mask = concat_mask.copy()
+            child_char_mask = np.zeros(len(char_mask[0]))
+            child_concat_mask = np.zeros(len(concat_mask[0]))
             child_sentence = []
-
             for word_ind in range(len(parents[0].split())):
                 parent_id = np.random.choice(2, p=p)
                 child_char_mask[word_ind] = char_mask[parent_id][word_ind]
@@ -290,8 +298,8 @@ class Misinformer(Attack):
                 parents[ind],
                 originals[ind],
                 paraphrased[ind],
-                char_mask[ind],
-                concat_mask[ind],
+                char_mask[ind].copy(),
+                concat_mask[ind].copy(),
             )
 
     def _mutate(self, child_sentence, original, paraphrased, char_mask, concat_mask):
@@ -303,18 +311,18 @@ class Misinformer(Attack):
         sent = child_sentence.split()
         mutate_ind = np.random.choice(len(sent))
         if not (char_mask[mutate_ind]) and not (concat_mask[mutate_ind]):
-            if char_mask.sum() > 0:
+            if char_mask.sum() > 0 and len(sent) == len(char_mask):
                 reset_ind = np.random.choice(len(sent), p=char_mask / char_mask.sum())
                 sent[reset_ind] = original[reset_ind]
                 char_mask[reset_ind] = 0
                 char_mask[mutate_ind] = 1
-            sent[mutate_ind] = self.char_mask._attack(sent[mutate_ind])
-        elif char_mask[mutate_ind]:
-            sent[mutate_ind] = self.char_mask._attack(original[mutate_ind])
+                sent[mutate_ind] = self.char_attack._attack(sent[mutate_ind])
+        elif char_mask[mutate_ind] == 1:
+            sent[mutate_ind] = self.char_attack._attack(original[mutate_ind])
         elif concat_mask[mutate_ind]:
-            attack = self.concat_mask._choose(1)
+            attack = self.concat_attack._choose(1)
             sent[mutate_ind] = attack[0]
-        return " ".join(sent), (original, paraphrased, char_mask, concat_mask)
+        return " ".join(sent), original, paraphrased, char_mask, concat_mask
 
     # Option2: adaptive/genetic algorithm
     def genetic_attack(
@@ -370,6 +378,7 @@ class Misinformer(Attack):
 
                     if pred == self.target_label:
                         attacked_predictions.append(self.target_label)
+                        print(f"Targeted attack succeeded after {evaluations}")
                         break
 
                     # if not, compute selection prob. using softmax of fitnesses
@@ -389,9 +398,20 @@ class Misinformer(Attack):
                         print(fitness)
                         print(fitness[parents_indxs])
                         print(parents_indxs)
-                        child, (
+                        # print(
+                        #     self._breed(
+                        #         ["x", "y"],
+                        #         ["x", "y"],
+                        #         np.zeros((2)),
+                        #         [np.zeros(1), np.zeros(1)],
+                        #         [np.zeros(1), np.zeros(1)],
+                        #         torch.tensor([2.0, 2.0]),
+                        #     )
+                        # )
+                        (
+                            child,
                             original,
-                            paraphrased,
+                            child_paraphrased,
                             char_attack,
                             concat_attack,
                         ) = self._breed(
@@ -402,18 +422,34 @@ class Misinformer(Attack):
                             [concat_masks[i] for i in parents_indxs],
                             fitness[parents_indxs],
                         )
-                        child, (
+                        print(f"Parents: {[generation[i] for i in parents_indxs]}")
+                        print(f"Char masks: { [char_masks[i] for i in parents_indxs]}")
+                        print(
+                            f"Concat masks: {[concat_masks[i] for i in parents_indxs]}"
+                        )
+
+                        print(
+                            f"Child: {child} \n char mask:{char_attack} \n concat mask: {concat_attack}"
+                        )
+                        (
+                            child,
                             original,
-                            paraphrased,
+                            child_paraphrased,
                             char_attack,
                             concat_attack,
-                        ) = self._mutate(child, original, char_attack, concat_attack)
+                        ) = self._mutate(
+                            child,
+                            original,
+                            child_paraphrased,
+                            char_attack.copy(),
+                            concat_attack.copy(),
+                        )
 
                         new_generation.append(child)
                         new_char_masks.append(char_attack)
                         new_concat_masks.append(concat_attack)
                         new_originals.append(original)
-                        new_paraphrased[gen_ind] = paraphrased
+                        new_paraphrased[gen_ind] = child_paraphrased
 
                     (
                         generation,
