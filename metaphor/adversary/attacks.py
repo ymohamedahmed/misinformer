@@ -49,7 +49,7 @@ class ConcatenationAttack(Attack):
         for x in sentences:
             # sample concatenation strings
             attack = self._choose(self.number_of_concats)
-            mask = np.zeros((len(sentences.split()) + len(attack)))
+            mask = np.zeros((len(x.split()) + len(attack)))
             mask[-len(attack) :] = 1
             attack = " ".join(attack)
             attacked_sentences.append(x + " " + attack)
@@ -86,7 +86,7 @@ class CharAttack(Attack):
         masks = []
         for sentence in sentences:
             scores = []
-            mask = np.zeros(len(sentences.split()))
+            mask = np.zeros(len(sentence.split()))
             for word in sentence.split():
                 score = self.lime_scores[word] if word in self.lime_scores else 0
                 scores.append(score)
@@ -262,9 +262,11 @@ class Misinformer(Attack):
         # how to combine parents?
         # case 1) one or both have been paraphrased -> select one of the parents by fitness prob.
         # case 2) neither have been paraphrased -> select word-by-word using fitness prob.
-        p = torch.softmax(fitnesses).numpy()
+        p = torch.nn.functional.softmax(fitnesses, dim=0).detach().numpy()
         if paraphrased[0] == paraphrased[1] == 0:
-            assert len(parents[0]) == len(parents[1])
+            print(parents[0])
+            print(parents[1])
+            assert len(parents[0].split()) == len(parents[1].split())
             child_char_mask = char_mask.copy()
             child_concat_mask = concat_mask.copy()
             child_sentence = []
@@ -342,7 +344,7 @@ class Misinformer(Attack):
                     paraphrased,
                     char_masks,
                     concat_masks,
-                ) = self._gen_attack(sentence)
+                ) = self._gen_attacks(sentence)
 
                 # use the surrogate model to compute fitness of each
                 for _ in range(max_generations):
@@ -352,7 +354,9 @@ class Misinformer(Attack):
                         surrogate_tokenizer,
                         surrogate_embedding,
                     )
-                    logits = torch.log(torch.softmax(logits, dim=1))
+                    logits = torch.log(
+                        torch.nn.functional.softmax(logits, dim=1).detach()
+                    )
                     logits *= -1
                     logits[:, self.target_label] *= -1
                     fitness = torch.sum(logits, dim=1)
@@ -369,7 +373,7 @@ class Misinformer(Attack):
                         break
 
                     # if not, compute selection prob. using softmax of fitnesses
-                    p = torch.softmax(fitness).numpy()
+                    p = torch.nn.functional.softmax(fitness, dim=0).detach().numpy()
 
                     # update the masks (paraphrased, char_masks, concat_masks)
                     new_generation = []
@@ -381,7 +385,10 @@ class Misinformer(Attack):
 
                         # choose two parents for each sentence
                         parents_indxs = np.random.choice(len(generation), p=p, size=2)
-
+                        #  parents, originals, paraphrased, char_mask, concat_mask, fitnesses
+                        print(fitness)
+                        print(fitness[parents_indxs])
+                        print(parents_indxs)
                         child, (
                             original,
                             paraphrased,
@@ -390,7 +397,7 @@ class Misinformer(Attack):
                         ) = self._breed(
                             [generation[i] for i in parents_indxs],
                             [orig_sentences[i] for i in parents_indxs],
-                            paraphrased,
+                            paraphrased[parents_indxs],
                             [char_masks[i] for i in parents_indxs],
                             [concat_masks[i] for i in parents_indxs],
                             fitness[parents_indxs],
