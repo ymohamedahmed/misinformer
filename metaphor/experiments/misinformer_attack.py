@@ -59,6 +59,7 @@ def main():
     sur_model.load_state_dict(torch.load(config.PATH + "bert-max.npy"))
     sur_tok = tokenizer
     sur_emb = embedding
+
     mis.genetic_attack(
         model=model,
         surrogate_model=sur_model,

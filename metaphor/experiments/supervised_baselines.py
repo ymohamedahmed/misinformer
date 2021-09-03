@@ -96,7 +96,8 @@ def main():
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
     )
     predictions = None
-    for seed in range(1):
+    NUM_SEEDS = 5
+    for seed in range(NUM_SEEDS):
         for i in range(3):
             tokenizer = tokenizers[i]()
             data = MisinformationPheme(
@@ -128,7 +129,7 @@ def main():
                 # log results and save model
                 torch.save(
                     classifier.state_dict(),
-                    config.PATH + file_names[i][j],
+                    config.PATH + f"seed_{seed}_" + file_names[i][j],
                 )
                 preds = []
                 for x, y in data.test:
@@ -158,7 +159,7 @@ def main():
             (len(pheme.labels[pheme.test_indxs]))
         )
         predictions[14] = torch.from_numpy(pheme.labels[pheme.test_indxs])
-        torch.save(predictions, config.PRED_PATH + "test_predictions.npy")
+        torch.save(predictions, config.PRED_PATH + f"test_predictions_seed_{seed}.npy")
 
 
 #  retrain on the harder task

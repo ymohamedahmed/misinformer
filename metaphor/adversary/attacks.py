@@ -58,27 +58,39 @@ class ConcatenationAttack(Attack):
 
 
 class CharAttack(Attack):
-    def __init__(self, lime_scores, max_levenshtein=2, max_number_of_words=3):
+    def __init__(self, lime_scores, max_levenshtein=1, max_number_of_words=3):
         self.lime_scores = lime_scores
         self.max_lev = max_levenshtein
         self.max_number_of_words = max_number_of_words
 
-    def _attack(self, word):
+    def _attack(self, orig_word):
         lower_chars = list(string.ascii_lowercase)
-        for _ in range(min(self.max_lev, len(word) - 1)):
+        word = orig_word
+        for _ in range(min(self.max_lev, len(orig_word.strip()) - 1)):
             # insertion, deletion or sub
-            if len(word) > 0:
-                ind = np.random.randint(low=0, high=len(word))
+            if len(orig_word.strip()) > 0:
+                ind = np.random.randint(low=0, high=len(orig_word.strip()))
                 p = np.random.uniform()
                 if p < 1 / 3:
                     # insertion
-                    word = word[:ind] + np.random.choice(lower_chars) + word[ind:]
+                    word = (
+                        orig_word[:ind]
+                        + np.random.choice(lower_chars)
+                        + orig_word[ind:]
+                    )
                 elif p < 2 / 3:
                     # deletion
-                    word = word[:ind] + word[ind + 1 :]
+                    word = orig_word[:ind] + orig_word[ind + 1 :]
                 else:
                     # sub
-                    word = word[:ind] + np.random.choice(lower_chars) + word[ind + 1 :]
+                    word = (
+                        orig_word[:ind]
+                        + np.random.choice(lower_chars)
+                        + orig_word[ind + 1 :]
+                    )
+        assert not (word.isspace()), f"New word: {word} orig: {orig_word}"
+        assert not (len(word.strip()) == 0), f"New word: {word} orig: {orig_word}"
+        assert not (word.isspace()), f"New word: {word} orig: {orig_word}"
         return word
 
     def attack(self, sentences: List[str]):
@@ -244,6 +256,8 @@ class Misinformer(Attack):
                     attacked_predictions.append(self.target_label)
                 else:
                     attacked_predictions.append(y_prime)
+            else:
+                attacked_predictions.append(y_prime)
 
         attacked_predictions = np.array(attacked_predictions)
         model_preds = np.array(model_preds)
@@ -313,12 +327,13 @@ class Misinformer(Attack):
         if not (char_mask[mutate_ind]) and not (concat_mask[mutate_ind]):
             if char_mask.sum() > 0 and len(sent) == len(char_mask):
                 reset_ind = np.random.choice(len(sent), p=char_mask / char_mask.sum())
-                sent[reset_ind] = original[reset_ind]
+                sent[reset_ind] = original.split()[reset_ind]
+                assert not (sent[reset_ind].isspace()), f"{original} {sent}"
                 char_mask[reset_ind] = 0
                 char_mask[mutate_ind] = 1
                 sent[mutate_ind] = self.char_attack._attack(sent[mutate_ind])
         elif char_mask[mutate_ind] == 1:
-            sent[mutate_ind] = self.char_attack._attack(original[mutate_ind])
+            sent[mutate_ind] = self.char_attack._attack(original.split()[mutate_ind])
         elif concat_mask[mutate_ind]:
             attack = self.concat_attack._choose(1)
             sent[mutate_ind] = attack[0]
@@ -337,14 +352,15 @@ class Misinformer(Attack):
         surrogate_embedding,
         max_generations=10,
     ):
-        attacked_predictions = []
         model_preds = []
+        attacked_predictions = np.zeros(len(test_labels))
         evaluations_per_sentence = []
         # only do this for cases where model doesn't predict y_prime as target
-        for sentence in tqdm(test_sentences):
+        for sentence_ind, sentence in enumerate(tqdm(test_sentences)):
             evaluations = 0
             y_prime = predict([sentence], model, tokenizer, embedding)[0]
             model_preds.append(y_prime)
+            attacked_predictions[sentence_ind] = y_prime
             if y_prime != self.target_label:
                 # create the first generation
                 generation, (
@@ -377,7 +393,7 @@ class Misinformer(Attack):
                     evaluations += 1
 
                     if pred == self.target_label:
-                        attacked_predictions.append(self.target_label)
+                        attacked_predictions[sentence_ind] = self.target_label
                         print(f"Targeted attack succeeded after {evaluations}")
                         break
 
@@ -398,16 +414,6 @@ class Misinformer(Attack):
                         print(fitness)
                         print(fitness[parents_indxs])
                         print(parents_indxs)
-                        # print(
-                        #     self._breed(
-                        #         ["x", "y"],
-                        #         ["x", "y"],
-                        #         np.zeros((2)),
-                        #         [np.zeros(1), np.zeros(1)],
-                        #         [np.zeros(1), np.zeros(1)],
-                        #         torch.tensor([2.0, 2.0]),
-                        #     )
-                        # )
                         (
                             child,
                             original,
@@ -466,7 +472,6 @@ class Misinformer(Attack):
                     )
             evaluations_per_sentence.append(evaluations)
 
-        attacked_predictions = np.array(attacked_predictions)
         model_preds = np.array(model_preds)
         # hit rate is all cases where model wasn't going to predict target but now does
         hit_rate = (
