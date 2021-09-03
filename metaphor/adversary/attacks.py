@@ -232,12 +232,10 @@ class Misinformer(Attack):
             y_prime = predict([x], model, tokenizer, embedding)[0]
             model_preds.append(y_prime)
             if y_prime != self.target_label:
-                total_target_examples += 1
-                attacked, _ = self._gen_attack(x)
+                attacked, _ = self._gen_attacks(x)
                 classes = predict(attacked, model, tokenizer, embedding)
                 hit = classes.eq(self.target_label).sum() > 0
                 if hit:
-                    hit_rate += 1
                     attacked_predictions.append(self.target_label)
                 else:
                     attacked_predictions.append(y_prime)
