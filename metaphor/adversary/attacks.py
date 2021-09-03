@@ -11,6 +11,9 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import string
 import metaphor
+import metaphor.experiments.config as config
+import time
+import logging
 
 
 def softmax(x):
@@ -180,9 +183,18 @@ class Misinformer(Attack):
         max_levenshtein=2,
         max_number_of_words=3,
         seed=0,
+        log_to_file=True,
     ):
         # lime scores is of the form word -> [false-score, unverified-score, true-score]
         np.random.seed(seed)
+        if log_to_file:
+            timestamped_file = f'misinformer-log-{time.strftime("%d/%m/%y-%H:%M:%S", time.localtime())}.txt'
+            logging.basicConfig(
+                filename=config.LOGGING_PATH + timestamped_file,
+                encoding="utf-8",
+                level=logging.DEBUG,
+            )
+
         self.lime_scores = lime_scores
         if target == MisinformerMode.UNTARGETED:
             raise ValueError(
@@ -259,20 +271,31 @@ class Misinformer(Attack):
             else:
                 attacked_predictions.append(y_prime)
 
+            logging.info(f"Fixed Attack: test sentence: {x}")
+            for s in attacked:
+                logging.info(f"Fixed Attack: {s}")
+
         attacked_predictions = np.array(attacked_predictions)
         model_preds = np.array(model_preds)
         # hit rate is all cases where model wasn't going to predict target but now does
         hit_rate = (
             attacked_predictions[model_preds != self.target_label] == self.target_label
         ).mean()
-        print(f"Attack success rate: {100*hit_rate}%")
-        print(f"New acc: {(attacked_predictions==test_labels).mean()}")
-        print(
-            f"Total prediction of target label: {(model_preds==self.target_label).mean()}"
-        )
-        print(
-            f"True frequency of target label: {(test_labels==self.target_label).mean()}"
-        )
+        results = {
+            "new_acc": (attacked_predictions == test_labels).mean(),
+            "min_acc": (test_labels == self.target_label).mean(),
+            "hit_rate": hit_rate,
+        }
+        return results
+
+        # print(f"Attack success rate: {100*hit_rate}%")
+        # print(f"New acc: {(attacked_predictions==test_labels).mean()}")
+        # print(
+        #     f"Total prediction of target label: {(model_preds==self.target_label).mean()}"
+        # )
+        # print(
+        #     f"True frequency of target label: {(test_labels==self.target_label).mean()}"
+        # )
         # print(f"Model would predict the target for {hit_rate+}")
 
     def _breed(
@@ -392,7 +415,9 @@ class Misinformer(Attack):
 
                     if pred == self.target_label:
                         attacked_predictions[sentence_ind] = self.target_label
-                        print(f"Targeted attack succeeded after {evaluations}")
+                        logging.info(
+                            f"Genetic Attack on {sentence} succeeded with {elite_member} after {evaluations} evals"
+                        )
                         break
 
                     # if not, compute selection prob. using softmax of fitnesses
@@ -426,15 +451,10 @@ class Misinformer(Attack):
                             [concat_masks[i] for i in parents_indxs],
                             fitness[parents_indxs],
                         )
-                        print(f"Parents: {[generation[i] for i in parents_indxs]}")
-                        print(f"Char masks: { [char_masks[i] for i in parents_indxs]}")
-                        print(
-                            f"Concat masks: {[concat_masks[i] for i in parents_indxs]}"
+                        logging.info(
+                            f"Genetic Attack: bred parents: {[generation[i] for i in parents_indxs]}"
                         )
-
-                        print(
-                            f"Child: {child} \n char mask:{char_attack} \n concat mask: {concat_attack}"
-                        )
+                        logging.info(f"Genetic Attack: child: {child}")
                         (
                             child,
                             original,
@@ -448,6 +468,7 @@ class Misinformer(Attack):
                             char_attack.copy(),
                             concat_attack.copy(),
                         )
+                        logging.info(f"Genetic Attack: child mutated into: {child}")
 
                         new_generation.append(child)
                         new_char_masks.append(char_attack)
@@ -471,21 +492,29 @@ class Misinformer(Attack):
             evaluations_per_sentence.append(evaluations)
 
         model_preds = np.array(model_preds)
-        # hit rate is all cases where model wasn't going to predict target but now does
-        hit_rate = (
-            attacked_predictions[model_preds != self.target_label] == self.target_label
-        ).mean()
-        print(f"Attack success rate: {100*hit_rate}%")
-        print(f"New acc: {(attacked_predictions==test_labels).mean()}")
-        print(
-            f"Total prediction of target label: {(model_preds==self.target_label).mean()}"
-        )
-        print(
-            f"True frequency of target label: {(test_labels==self.target_label).mean()}"
-        )
-        print("MAX and MEAN evaluations per sentence")
-        print(max(evaluations_per_sentence))
-        print(sum(evaluations_per_sentence) / len(evaluations_per_sentence))
+        # hit rate is percentage of cases where model wasn't going to predict target but now does
+        # hit_rate = (
+        #     attacked_predictions[model_preds != self.target_label] == self.target_label
+        # ).mean()
+        results = {
+            "evals_per_sentence": evaluations_per_sentence,
+            "new_acc": (attacked_predictions == test_labels).mean(),
+            "min_acc": (test_labels == self.target_label).mean(),
+            "hit_rate": attacked_predictions[model_preds != self.target_label]
+            == self.target_label,
+        }
+        return results
+        # print(f"Attack success rate: {100*hit_rate}%")
+        # print(f"New acc: {(attacked_predictions==test_labels).mean()}")
+        # print(
+        #     f"Total prediction of target label: {(model_preds==self.target_label).mean()}"
+        # )
+        # print(
+        #     f"True frequency of target label: {(test_labels==self.target_label).mean()}"
+        # )
+        # print("MAX and MEAN evaluations per sentence")
+        # print(max(evaluations_per_sentence))
+        # print(sum(evaluations_per_sentence) / len(evaluations_per_sentence))
 
 
 # Not in use

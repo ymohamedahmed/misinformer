@@ -160,7 +160,7 @@ def main():
                         emb = x[1].to(device)
                         y_prime = classifier(emb, ind).argmax(dim=1).detach().cpu()
                         preds = preds + y_prime.tolist()
-                    predictions[(i * len(tokenizers)) + j] = torch.tensor(preds)
+                    predictions[seed][i][j][classifier_ind] = torch.tensor(preds)
                     test_acc = (
                         torch.tensor(preds)
                         .eq(torch.from_numpy(data.labels[data.test_indxs]))
