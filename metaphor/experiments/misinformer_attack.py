@@ -59,7 +59,7 @@ def _best_models():
 def _surrogate_models(index):
     # from best to worst of the surrogate models
     paths = [
-        "seed-0-glove-mean-mlp.npy",
+        "seed-0-bert-cnn-logreg.npy",
         "seed-0-glove-max-mlp.npy",
     ]
     aggregators = [MeanPooler, MeanPooler]
