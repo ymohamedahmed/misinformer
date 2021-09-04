@@ -501,7 +501,7 @@ class Misinformer(Attack):
                         concat_masks,
                     ) = self._new_generation(
                         generation=generation,
-                        seletion_probability=p,
+                        selection_probability=p,
                         orig_sentences=orig_sentences,
                         paraphrased=paraphrased,
                         char_masks=char_masks,
