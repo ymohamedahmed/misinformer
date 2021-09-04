@@ -187,10 +187,58 @@ def genetic_adversary_experiments(pheme, lime_scores):
     return data
 
 
-def adversarial_training_experiments():
+def adversarial_training_experiments(lime_scores):
     # using the best model train with augmentation prob. p to mix in results from _gen_attacks
     # augment tensor is size:  num_sentences x 32 x sentence_length x embedding_dim
-    pass
+    paraphrase, number_of_concats, max_lev = False, 4, 2
+    bms = _best_models()
+    surrogate_model, sur_tok, sur_emb, sur_path = bms[1]
+    mis = Misinformer(
+        lime_scores.copy(),
+        attacks=[
+            paraphrase,
+            True,
+            number_of_concats > 0,
+        ],
+        max_levenshtein=max_lev,
+        number_of_concats=number_of_concats,
+    )
+    train_sentences = ...
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    seed = 0
+
+    adv = [y for x in train_sentences for y in mis._gen_attacks(x)]
+    tokenized = tokenizer(adv)
+    embedding.to(device)
+    adv_emb = embedding(tokenized)
+
+    model = ...
+
+    data = MisinformationPheme(
+        file_path=pheme_path,
+        tokenizer=tokenizer,
+        embedder=embeddings[i](tokenizer),
+        seed=seed,
+        augmentation=...,
+    )
+
+    trainer = ClassifierTrainer(**trainer_args)
+    results = trainer.fit(classifier, data.train, data.val)
+
+    # attack
+    results = mis.genetic_attack(
+        model=model,
+        surrogate_model=surrogate_model,
+        test_sentences=test_sentences,
+        test_labels=pheme.labels[pheme.test_indxs],
+        tokenizer=tokenizer,
+        embedding=embedding,
+        surrogate_tokenizer=sur_tok,
+        surrogate_embedding=sur_emb,
+        max_generations=30,
+    )
+
+    # compute train and test accuracy
 
 
 def write_csv(data, file_name):
