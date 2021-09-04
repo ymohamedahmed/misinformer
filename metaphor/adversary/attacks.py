@@ -188,7 +188,7 @@ class Misinformer(Attack):
         # lime scores is of the form word -> [false-score, unverified-score, true-score]
         np.random.seed(seed)
         if log_to_file:
-            timestamped_file = f'misinformer-log-{time.strftime("%d/%m/%y-%H:%M:%S", time.localtime())}.txt'
+            timestamped_file = f'misinformer-log-{time.strftime("%d-%m-%y-%H:%M:%S", time.localtime())}.txt'
             logging.basicConfig(
                 filename=config.LOGGING_PATH + timestamped_file,
                 encoding="utf-8",

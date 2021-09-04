@@ -40,7 +40,7 @@ def _best_models():
     args = [bert_rnn_args, {}, {}]
     aggregators = [RNN, MeanPooler, MeanPooler]
     classifiers = [
-        LogisticRegressor(768),
+        LogisticRegressor(256),
         LogisticRegressor(768),
         MLP([768, 25, 5, 3]),
     ]
@@ -52,7 +52,7 @@ def _best_models():
 
         model = MisinformationModel(aggregators[i](**args[i]), classifiers[i])
         model.load_state_dict(torch.load(config.PATH + paths[i]))
-        models.append([(model, tokenizer, embedding, path)])
+        models.append((model, tokenizer, embedding, paths[i]))
     return models
 
 
@@ -78,7 +78,7 @@ def fixed_adversary_experiments(pheme, lime_scores):
                         True,
                         number_of_concats > 0,
                     ],
-                    number_of_conats=number_of_concats,
+                    number_of_concats=number_of_concats,
                 )
                 results = mis.attack(
                     model=model,
@@ -128,7 +128,7 @@ def main():
         tokenizer=lambda x: x,
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
-    data = fixed_adversary_experiments(pheme, train_lime_scores, device)
+    data = fixed_adversary_experiments(pheme, train_lime_scores)
     write_csv(data, config.PRED_PATH + "fixed_adversary.csv")
 
     """
