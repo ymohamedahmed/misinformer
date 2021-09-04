@@ -15,9 +15,11 @@ def load_obj(name):
 def forward(sentences, model, tokenizer, embedding, batch_size=128, device=None):
     if device is None:
         device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     logits = torch.zeros((len(sentences), 3))
     tokenized_sentences = tokenizer(sentences)
     embedding.to(device)
+    tokenized_sentences = tokenized_sentences.to(device)
     embedding = embedding(tokenized_sentences).to(device)
 
     model.to(device)

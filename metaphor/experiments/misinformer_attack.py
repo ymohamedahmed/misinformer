@@ -181,6 +181,7 @@ def genetic_adversary_experiments(pheme, lime_scores):
 
 
 def adversarial_training_experiments():
+    # using the best model train with augmentation prob. p to mix in results from _gen_attacks
     pass
 
 
