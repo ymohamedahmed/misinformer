@@ -362,7 +362,7 @@ class Misinformer(Attack):
     def _new_generation(
         self,
         generation,
-        seletion_probability,
+        selection_probability,
         orig_sentences,
         paraphrased,
         char_masks,
