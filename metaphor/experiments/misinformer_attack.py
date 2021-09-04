@@ -72,7 +72,7 @@ def fixed_adversary_experiments(pheme, lime_scores):
         for paraphrase in tqdm([False, True]):
             for number_of_concats in range(4):
                 mis = Misinformer(
-                    lime_scores,
+                    lime_scores.copy(),
                     attacks=[
                         paraphrase,
                         True,

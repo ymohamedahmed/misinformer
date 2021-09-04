@@ -213,6 +213,7 @@ class Misinformer(Attack):
             else array[indices[target]]
         )
         self.attacks = attacks
+
         for k in self.lime_scores.keys():
             self.lime_scores[k] = agg(self.lime_scores[k])
         self.paraphraser = ParaphraseAttack()
