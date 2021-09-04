@@ -233,23 +233,26 @@ class Misinformer(Attack):
         originals = []
         attacked = []
         paraphrased = np.zeros((32))
-        for word in x.split():
-            if self.attacks[0]:
-                attacked = self.paraphraser.attack([x]) + [x for _ in range(16)]
-                paraphrased[:4] = 1
-            else:
-                attacked = [x for _ in range(32)]
-            originals = attacked.copy()
-            # a batch of 32 strings, 16 have been paraphrased, 16 are the original
-            if self.attacks[1]:
-                attacked, char_masks = self.char_attack.attack(attacked)
-            if self.attacks[2]:
-                attacked, concat_masks = self.concat_attack.attack(attacked)
+        if self.attacks[0]:
+            attacked = self.paraphraser.attack([x]) + [x for _ in range(16)]
+            paraphrased[:4] = 1
+        else:
+            attacked = [x for _ in range(32)]
+        originals = attacked.copy()
+
+        char_masks = [np.zeros(len(x.split())) for x in attacked]
+        concat_masks = [np.zeros(len(x.split())) for x in attacked]
+        # a batch of 32 strings, 16 have been paraphrased, 16 are the original
+        if self.attacks[1]:
+            attacked, char_masks = self.char_attack.attack(attacked)
+        if self.attacks[2]:
+            attacked, concat_masks = self.concat_attack.attack(attacked)
 
         # ensure that char masks are long enough (i.e. have zeros where the concatenated words are)
         for i in range(len(char_masks)):
             diff = len(concat_masks[i]) - len(char_masks[i])
             char_masks[i] = np.append(char_masks[i], np.zeros((diff)))
+
         return attacked, (originals, paraphrased, char_masks, concat_masks)
 
     # Option1: fixed attempts
