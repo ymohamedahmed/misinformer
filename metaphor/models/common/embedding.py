@@ -62,6 +62,7 @@ class FixedEmbedding(nn.Module):
         self._embed = None
         print(f"Downloading {gensim_pre_trained_path}")
         self.model = api.load(gensim_pre_trained_path)
+        self.device = device
 
     def _construct_embedding(self):
         embedding_dim = self.model.vector_size
@@ -96,9 +97,11 @@ class FixedEmbedding(nn.Module):
         # print number out of vocab
         print(f"done. Embedding dim: {embedding_dim}. Number of OOV tokens: {OOV}")
         self._embed = nn.Embedding.from_pretrained(torch.FloatTensor(weights))
+        self._embed.to(self.device)
 
     def forward(self, x: torch.Tensor):
         # x is the tokens representing the sentence
+        x = x.to(self.device)
         if self._embed is None:
             self._construct_embedding()
         return self._embed(x)
