@@ -125,7 +125,7 @@ def fixed_adversary_experiments(pheme, lime_scores):
 def genetic_adversary_experiments(pheme, lime_scores):
     # different parameters attacking the best model with the worst as the surrogate
     model, tokenizer, embedding, path = _best_models()[0]
-    surrogate_model, sur_tok, sur_emb, sur_path = _surrogate_models()[0]
+    surrogate_model, sur_tok, sur_emb, sur_path = _surrogate_models(0)
     columns = [
         "model",
         "surrogate model",
