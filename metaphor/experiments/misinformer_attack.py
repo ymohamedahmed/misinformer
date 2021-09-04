@@ -128,8 +128,10 @@ def fixed_adversary_experiments(pheme, lime_scores):
 
 def genetic_adversary_experiments(pheme, lime_scores):
     # different parameters attacking the best model with the worst as the surrogate
-    model, tokenizer, embedding, path = _best_models()[0]
-    surrogate_model, sur_tok, sur_emb, sur_path = _surrogate_models(0)
+    bms = _best_models()
+    model, tokenizer, embedding, path = bms[0]
+    # surrogate_model, sur_tok, sur_emb, sur_path = _surrogate_models(0)
+    surrogate_model, sur_tok, sur_emb, sur_path = bms[1]
     columns = [
         "model",
         "surrogate model",
@@ -145,41 +147,42 @@ def genetic_adversary_experiments(pheme, lime_scores):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
     paraphrase = False
-    for number_of_concats in range(4):
-        for max_lev in range(1, 3):
-            mis = Misinformer(
-                lime_scores.copy(),
-                attacks=[
+    for paraphrase in [False, True]:
+        for number_of_concats in range(4):
+            for max_lev in range(2, 3):
+                mis = Misinformer(
+                    lime_scores.copy(),
+                    attacks=[
+                        paraphrase,
+                        True,
+                        number_of_concats > 0,
+                    ],
+                    max_levenshtein=max_lev,
+                    number_of_concats=number_of_concats,
+                )
+                sur_emb.to(device)
+                results = mis.genetic_attack(
+                    model=model,
+                    surrogate_model=surrogate_model,
+                    test_sentences=test_sentences,
+                    test_labels=pheme.labels[pheme.test_indxs],
+                    tokenizer=tokenizer,
+                    embedding=embedding,
+                    surrogate_tokenizer=sur_tok,
+                    surrogate_embedding=sur_emb,
+                )
+                row = [
+                    path,
+                    sur_path,
                     paraphrase,
-                    True,
-                    number_of_concats > 0,
-                ],
-                max_levenshtein=max_lev,
-                number_of_concats=number_of_concats,
-            )
-            sur_emb.to(device)
-            results = mis.genetic_attack(
-                model=model,
-                surrogate_model=surrogate_model,
-                test_sentences=test_sentences,
-                test_labels=pheme.labels[pheme.test_indxs],
-                tokenizer=tokenizer,
-                embedding=embedding,
-                surrogate_tokenizer=sur_tok,
-                surrogate_embedding=sur_emb,
-            )
-            row = [
-                path,
-                sur_path,
-                paraphrase,
-                number_of_concats,
-                max_lev,
-                results["new_acc"],
-                results["min_acc"],
-                results["hit_rate"],
-                results["evals_per_sentence"],
-            ]
-            data.append(row)
+                    number_of_concats,
+                    max_lev,
+                    results["new_acc"],
+                    results["min_acc"],
+                    results["hit_rate"],
+                    results["evals_per_sentence"],
+                ]
+                data.append(row)
     return data
 
 

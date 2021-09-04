@@ -519,8 +519,10 @@ class Misinformer(Attack):
             "evals_per_sentence": evaluations_per_sentence,
             "new_acc": (attacked_predictions == test_labels).mean(),
             "min_acc": (test_labels == self.target_label).mean(),
-            "hit_rate": attacked_predictions[model_preds != self.target_label]
-            == self.target_label,
+            "hit_rate": (
+                attacked_predictions[model_preds != self.target_label]
+                == self.target_label
+            ).mean(),
         }
         return results
         # print(f"Attack success rate: {100*hit_rate}%")
