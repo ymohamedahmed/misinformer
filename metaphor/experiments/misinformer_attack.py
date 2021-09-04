@@ -60,16 +60,20 @@ def _surrogate_models(index):
     # from best to worst of the surrogate models
     paths = [
         "seed-0-bert-cnn-logreg.npy",
-        "seed-0-glove-max-mlp.npy",
+        "seed-0-bert-cnn-mlp.npy",
     ]
-    aggregators = [MeanPooler, MeanPooler]
+    aggregators = [CNN, CNN]
     classifiers = [
-        MLP([200, 25, 5, 3]),
-        MLP([200, 25, 5, 3]),
+        LogisticRegressor(768),
+        MLP([768, 25, 5, 3]),
     ]
-    args = {}
-    tokenizer = StandardTokenizer()
-    embedding = Glove(tokenizer=tokenizer)
+    args = {
+        "conv_channels": [768, 20],
+        "output_dim": 210,
+        "kernel_sizes": [5],
+    }
+    tokenizer = CustomBertTokenizer()
+    embedding = Bert(tokenizer=tokenizer)
     args["tokenizer"] = tokenizer
 
     model = MisinformationModel(aggregators[index](**args), classifiers[index])
