@@ -309,12 +309,6 @@ class Misinformer(Attack):
         # case 2) neither have been paraphrased -> select word-by-word using fitness prob.
         p = torch.nn.functional.softmax(fitnesses, dim=0).detach().numpy()
         if paraphrased[0] == paraphrased[1] == 0:
-            print(parents[0])
-            print(parents[1])
-            print(char_mask[0])
-            print(char_mask[1])
-            print(concat_mask[0])
-            print(concat_mask[1])
             child_char_mask = np.zeros(len(char_mask[0]))
             child_concat_mask = np.zeros(len(concat_mask[0]))
             child_sentence = []
@@ -386,9 +380,6 @@ class Misinformer(Attack):
                 len(generation), p=selection_probability, size=2
             )
             #  parents, originals, paraphrased, char_mask, concat_mask, fitnesses
-            print(fitness)
-            print(fitness[parents_indxs])
-            print(parents_indxs)
             (
                 child,
                 original,

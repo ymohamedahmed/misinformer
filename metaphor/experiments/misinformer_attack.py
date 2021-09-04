@@ -1,5 +1,7 @@
 from metaphor.utils.utils import load_obj, predict
 from metaphor.adversary.attacks import Misinformer
+from tqdm import tqdm
+import csv
 from metaphor.models.common import (
     Bert,
     RNN,
@@ -50,13 +52,11 @@ def _best_models():
 
         model = MisinformationModel(aggregators[i](**args[i]), classifiers[i])
         model.load_state_dict(torch.load(config.PATH + paths[i]))
-        models.append([(model, tokenizer, embedding)])
+        models.append([(model, tokenizer, embedding, path)])
     return models
 
 
 def fixed_adversary_experiments(pheme, lime_scores):
-    file_path = config.PRED_PATH + "fixed_adversary.csv"
-    # for each model
     columns = [
         "model",
         "number of concats",
@@ -65,20 +65,11 @@ def fixed_adversary_experiments(pheme, lime_scores):
         "minimum possible accuracy",
         "hit rate",
     ]
-
-    pheme_path = os.path.join(
-        Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
-    )
-    pheme = MisinformationPheme(
-        file_path=pheme_path,
-        tokenizer=lambda x: x,
-        embedder=lambda x: torch.zeros((len(x), 200)),
-        seed=0,
-    )
+    data = [columns]
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
     models = _best_models()
-    for (model, tokenizer, embedding) in models:
-        for paraphrase in [False, True]:
+    for (model, tokenizer, embedding, path) in tqdm(models):
+        for paraphrase in tqdm([False, True]):
             for number_of_concats in range(4):
                 mis = Misinformer(
                     lime_scores,
@@ -96,6 +87,16 @@ def fixed_adversary_experiments(pheme, lime_scores):
                     embedding=embedding,
                     tokenizer=tokenizer,
                 )
+                row = [
+                    path,
+                    number_of_concats,
+                    2,
+                    results["new_acc"],
+                    results["min_acc"],
+                    results["hit_rate"],
+                ]
+                data.append(row)
+    return data
 
 
 def genetic_adversary_experiments():
@@ -106,25 +107,36 @@ def adversarial_training_experiments():
     pass
 
 
+def write_csv(data, file_name):
+    f = open(file_name, "w")
+    writer = csv.writer(f)
+    for row in data:
+        writer.writerow(row)
+    f.close()
+
+
 def main():
     train_lime_scores = load_obj(
         "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/train_lime_scores"
     )
-    mis = Misinformer(train_lime_scores)
     pheme_path = os.path.join(
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
     )
-    tokenizer = CustomBertTokenizer()
-    embedding = Bert(tokenizer=tokenizer)
-    layers = [768, 25, 5, 3]
-    args = {}
-    args["tokenizer"] = tokenizer
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     pheme = MisinformationPheme(
         file_path=pheme_path,
         tokenizer=lambda x: x,
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
+    data = fixed_adversary_experiments(pheme, train_lime_scores, device)
+    write_csv(data, config.PRED_PATH + "fixed_adversary.csv")
+
+    """
+    tokenizer = CustomBertTokenizer()
+    embedding = Bert(tokenizer=tokenizer)
+    layers = [768, 25, 5, 3]
+    args = {}
+    args["tokenizer"] = tokenizer
     model = MisinformationModel(MeanPooler(**args), MLP(layers))
     model.load_state_dict(torch.load(config.PATH + "seed-0-bert-cnn-nlp.npy"))
     embedding.to(device)
@@ -144,6 +156,7 @@ def main():
         surrogate_tokenizer=sur_tok,
         surrogate_embedding=sur_emb,
     )
+    """
 
 
 if __name__ == "__main__":
