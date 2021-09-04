@@ -68,13 +68,13 @@ def _surrogate_models():
         MLP([200, 25, 5, 3]),
     ]
     models = []
-    for i in range(3):
+    for i in range(2):
         args = {}
         tokenizer = StandardTokenizer()
         embedding = Glove(tokenizer=tokenizer)
-        args[i]["tokenizer"] = tokenizer
+        args["tokenizer"] = tokenizer
 
-        model = MisinformationModel(aggregators[i](**args[i]), classifiers[i])
+        model = MisinformationModel(aggregators[i](**args), classifiers[i])
         model.load_state_dict(torch.load(config.PATH + paths[i]))
         models.append((model, tokenizer, embedding, paths[i]))
     return models
