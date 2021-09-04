@@ -270,7 +270,12 @@ class TopicPheme(Pheme):
 
 class PhemeDataset(torch.utils.data.Dataset):
     def __init__(
-        self, tweet_ids: torch.Tensor, embedding: torch.Tensor, labels: torch.Tensor
+        self,
+        tweet_ids: torch.Tensor,
+        embedding: torch.Tensor,
+        labels: torch.Tensor,
+        augmented_embeddings: torch.Tensor = None,
+        augment_prob=0.1,
     ):
         super().__init__()
         self.tweet_ids = tweet_ids

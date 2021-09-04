@@ -141,6 +141,7 @@ def genetic_adversary_experiments(pheme, lime_scores):
         "evals per sentence",
     ]
     data = [columns]
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
     paraphrase = False
     for number_of_concats in range(4):
@@ -155,6 +156,7 @@ def genetic_adversary_experiments(pheme, lime_scores):
                 max_levenshtein=max_lev,
                 number_of_concats=number_of_concats,
             )
+            sur_emb.to(device)
             results = mis.genetic_attack(
                 model=model,
                 surrogate_model=surrogate_model,
@@ -182,6 +184,7 @@ def genetic_adversary_experiments(pheme, lime_scores):
 
 def adversarial_training_experiments():
     # using the best model train with augmentation prob. p to mix in results from _gen_attacks
+    # augment tensor is size:  num_sentences x 32 x sentence_length x embedding_dim
     pass
 
 
@@ -200,7 +203,6 @@ def main():
     pheme_path = os.path.join(
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
     )
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     pheme = MisinformationPheme(
         file_path=pheme_path,
         tokenizer=lambda x: x,
