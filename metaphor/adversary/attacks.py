@@ -194,6 +194,9 @@ class Misinformer(Attack):
                 encoding="utf-8",
                 level=logging.DEBUG,
             )
+            logging.info(
+                f"Settings: para-{attacks[0]}-char-{attacks[1]}-concat-{attacks[2]}-number_concats-{number_of_concats}-max_lev-{max_levenshtein}-max_num_words-{max_number_of_words}"
+            )
 
         self.lime_scores = lime_scores
         if target == MisinformerMode.UNTARGETED:
