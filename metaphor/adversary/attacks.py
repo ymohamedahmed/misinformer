@@ -190,7 +190,7 @@ class Misinformer(Attack):
         if log_to_file:
             timestamped_file = f'misinformer-log-{time.strftime("%d-%m-%y-%H:%M:%S", time.localtime())}.txt'
             logging.basicConfig(
-                filename=config.LOGGING_PATH + timestamped_file,
+                filename=config.LOGGING_PATH + timestamped_file, level=logging.DEBUG
             )
             logging.info(
                 f"Settings: para-{attacks[0]}-char-{attacks[1]}-concat-{attacks[2]}-number_concats-{number_of_concats}-max_lev-{max_levenshtein}-max_num_words-{max_number_of_words}"
