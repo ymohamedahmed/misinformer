@@ -56,7 +56,7 @@ def _best_models():
     return models
 
 
-def _surrogate_models():
+def _surrogate_models(index):
     # from best to worst of the surrogate models
     paths = [
         "seed-0-glove-mean-mlp.npy",
@@ -67,17 +67,14 @@ def _surrogate_models():
         MLP([200, 25, 5, 3]),
         MLP([200, 25, 5, 3]),
     ]
-    models = []
-    for i in range(2):
-        args = {}
-        tokenizer = StandardTokenizer()
-        embedding = Glove(tokenizer=tokenizer)
-        args["tokenizer"] = tokenizer
+    args = {}
+    tokenizer = StandardTokenizer()
+    embedding = Glove(tokenizer=tokenizer)
+    args["tokenizer"] = tokenizer
 
-        model = MisinformationModel(aggregators[i](**args), classifiers[i])
-        model.load_state_dict(torch.load(config.PATH + paths[i]))
-        models.append((model, tokenizer, embedding, paths[i]))
-    return models
+    model = MisinformationModel(aggregators[index](**args), classifiers[index])
+    model.load_state_dict(torch.load(config.PATH + paths[index]))
+    return (model, tokenizer, embedding, paths[index])
 
 
 def fixed_adversary_experiments(pheme, lime_scores):
