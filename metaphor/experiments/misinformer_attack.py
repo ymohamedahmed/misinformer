@@ -64,8 +64,8 @@ def _surrogate_models(index):
     ]
     aggregators = [CNN, CNN]
     classifiers = [
-        LogisticRegressor(768),
-        MLP([768, 25, 5, 3]),
+        LogisticRegressor(20 * 210),
+        MLP([20 * 210, 25, 5, 3]),
     ]
     args = {
         "conv_channels": [768, 20],
