@@ -149,7 +149,7 @@ def genetic_adversary_experiments(pheme, lime_scores):
     paraphrase = False
     for paraphrase in [False, True]:
         for number_of_concats in range(4):
-            for max_lev in range(2, 3):
+            for max_lev in range(1, 3):
                 mis = Misinformer(
                     lime_scores.copy(),
                     attacks=[
@@ -170,6 +170,7 @@ def genetic_adversary_experiments(pheme, lime_scores):
                     embedding=embedding,
                     surrogate_tokenizer=sur_tok,
                     surrogate_embedding=sur_emb,
+                    max_generations=30,
                 )
                 row = [
                     path,
