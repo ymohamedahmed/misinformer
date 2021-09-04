@@ -18,11 +18,12 @@ def forward(sentences, model, tokenizer, embedding, batch_size=128, device=None)
 
     logits = torch.zeros((len(sentences), 3))
     tokenized_sentences = tokenizer(sentences)
+
+    model.to(device)
     embedding.to(device)
     tokenized_sentences = tokenized_sentences.to(device)
     embedding = embedding(tokenized_sentences).to(device)
 
-    model.to(device)
     for start in range(0, len(sentences), batch_size):
         end = min(len(sentences), start + batch_size)
         y = model(embedding[start:end], torch.arange(start, end).to(device))
