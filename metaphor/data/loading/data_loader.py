@@ -56,6 +56,8 @@ class Pheme:
             # embedding has shape (N+len(augmented_sentences))*max_sentence_len*embedding_dim
             # len(augmented_sentences) = number_of_augments_per_sentence (=32) * len(train_sentences)
             # We want it reshaped into max_sentence_len * number_of_augments_per_sentence * embedding_dim
+            print(len(augmented_sentences))
+            print(embedding.shape)
             x, y, z = embedding.shape
             aug_per_sent = (x - N) // len(self.train_indxs)
             augmentation = embedding[N:].reshape((y, aug_per_sent, z))
