@@ -20,7 +20,7 @@ class Pheme:
         seed=0,
         splits: List[float] = [0.6, 0.2, 0.2],
         indxs=None,
-        augmentation=None,
+        augmented_sentences=None,
     ):
         # TODO add support for augmentation
 
@@ -44,7 +44,11 @@ class Pheme:
             self.val_indxs = indxs[1]
             self.test_indxs = indxs[2]
 
-        tokenized_sentences = tokenizer([x for x in data["text"].values])
+        sentences = [x for x in data["text"].values]
+        if augmented_sentences is not None:
+            sentences = sentences + augmented_sentences
+
+        tokenized_sentences = tokenizer(sentences)
         embedding = embedder(tokenized_sentences)
 
         self.train = torch.utils.data.DataLoader(
@@ -52,7 +56,7 @@ class Pheme:
                 self.train_indxs,
                 embedding[self.train_indxs],
                 labels[self.train_indxs],
-                augmentation=augmentation,
+                augmentation=embedding[N:],
             ),
             batch_size=batch_size,
         )
@@ -130,7 +134,7 @@ class MisinformationPheme(Pheme):
         embedder: nn.Module,
         seed=0,
         batch_size: int = 128,
-        augmentation=None,
+        augmented_sentences=None,
         splits: List[float] = [0.6, 0.2, 0.2],
     ):
         super().__init__(
@@ -140,7 +144,7 @@ class MisinformationPheme(Pheme):
             batch_size=batch_size,
             splits=splits,
             label_fun=self.labels,
-            augmentation=augmentation,
+            augmented_sentences=augmented_sentences,
             seed=seed,
         )
 

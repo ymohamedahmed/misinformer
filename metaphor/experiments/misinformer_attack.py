@@ -251,19 +251,19 @@ def adversarial_training_experiments(lime_scores, pheme_path):
                 )
 
                 adv = [y for x in train_sentences for y in mis._gen_attacks(x)[0]]
-                tokenized = tokenizer(adv)
-                embedding.to(device)
-                tokenized = tokenized.to(device)
-                adv_emb = embedding(tokenized)
-                adv_emb = adv_emb.reshape(
-                    (len(train_sentences), 32, tokenized.shape[1], -1)
-                )
+                # tokenized = tokenizer(adv)
+                # embedding.to(device)
+                # tokenized = tokenized.to(device)
+                # adv_emb = embedding(tokenized)
+                # adv_emb = adv_emb.reshape(
+                #     (len(train_sentences), 32, tokenized.shape[1], -1)
+                # )
                 data = MisinformationPheme(
                     file_path=pheme_path,
                     tokenizer=tokenizer,
                     embedder=embedding,
                     seed=seed,
-                    augmentation=adv_emb,
+                    augmented_sentences=adv,
                 )
                 trainer = ClassifierTrainer(**supervised_baselines.trainer_args)
                 results = trainer.fit(model, data.train, data.val)
