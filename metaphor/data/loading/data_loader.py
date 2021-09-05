@@ -130,6 +130,7 @@ class MisinformationPheme(Pheme):
         embedder: nn.Module,
         seed=0,
         batch_size: int = 128,
+        augmentation=None,
         splits: List[float] = [0.6, 0.2, 0.2],
     ):
         super().__init__(
@@ -139,6 +140,7 @@ class MisinformationPheme(Pheme):
             batch_size=batch_size,
             splits=splits,
             label_fun=self.labels,
+            augmentation=augmentation,
             seed=seed,
         )
 
@@ -278,14 +280,14 @@ class PhemeDataset(torch.utils.data.Dataset):
         tweet_ids: torch.Tensor,
         embedding: torch.Tensor,
         labels: torch.Tensor,
-        augmented_embeddings: torch.Tensor = None,
+        augmentation: torch.Tensor = None,
         augment_prob=0.1,
     ):
         super().__init__()
         self.tweet_ids = tweet_ids
         self.embedding = embedding
         self.labels = labels
-        self._aug = augmented_embeddings
+        self._aug = augmentation
         self._aug_p = augment_prob
 
     def __len__(self):
