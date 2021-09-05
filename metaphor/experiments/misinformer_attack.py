@@ -254,6 +254,9 @@ def adversarial_training_experiments(lime_scores, pheme_path):
                 tokenized = tokenizer(adv)
                 embedding.to(device)
                 adv_emb = embedding(tokenized)
+                adv_emb = adv_emb.reshape(
+                    (len(train_sentences), 32, tokenized.shape[1], -1)
+                )
                 data = MisinformationPheme(
                     file_path=pheme_path,
                     tokenizer=tokenizer,
