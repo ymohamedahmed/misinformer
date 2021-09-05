@@ -52,7 +52,7 @@ class Pheme:
                 self.train_indxs,
                 embedding[self.train_indxs],
                 labels[self.train_indxs],
-                augmented_embeddings=augmentation,
+                augmentation=augmentation,
             ),
             batch_size=batch_size,
         )
