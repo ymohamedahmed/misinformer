@@ -250,7 +250,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
                     seed, emb_ind, agg_ind, class_ind
                 )
 
-                adv = [y for x in train_sentences for y in mis._gen_attacks(x)]
+                adv = [y for x in train_sentences for y in mis._gen_attacks(x)[0]]
                 tokenized = tokenizer(adv)
                 embedding.to(device)
                 tokenized = tokenized.to(device)
@@ -267,9 +267,6 @@ def adversarial_training_experiments(lime_scores, pheme_path):
                 )
                 trainer = ClassifierTrainer(**supervised_baselines.trainer_args)
                 results = trainer.fit(model, data.train, data.val)
-
-                # compute train and test accuracy
-                # TODO save predictions
 
                 # preds on the unattacked test set
                 preds = []
