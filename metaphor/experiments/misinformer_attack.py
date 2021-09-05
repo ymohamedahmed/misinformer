@@ -265,6 +265,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
                     seed=seed,
                     augmented_sentences=adv,
                 )
+                model.to(device)
                 trainer = ClassifierTrainer(**supervised_baselines.trainer_args)
                 results = trainer.fit(model, data.train, data.val)
 
