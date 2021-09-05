@@ -243,7 +243,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
     for emb_ind in range(2, 3):
         for agg_ind in range(4):
             for class_ind in range(2):
-                model, tokenizer, embedding = supervised_baselines.get_model()
+                model, tokenizer, embedding = supervised_baselines.instantiate_model()
                 model_name = supervised_baselines.model_name(
                     seed, emb_ind, agg_ind, class_ind
                 )
