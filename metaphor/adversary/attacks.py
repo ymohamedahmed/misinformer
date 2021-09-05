@@ -523,7 +523,7 @@ class Misinformer(Attack):
                 attacked_predictions[model_preds != self.target_label]
                 == self.target_label
             ).mean(),
-            "model_preds": model_preds,
+            "model_preds": attacked_predictions,
         }
         return results
         # print(f"Attack success rate: {100*hit_rate}%")

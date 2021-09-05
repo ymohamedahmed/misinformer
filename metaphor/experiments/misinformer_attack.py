@@ -211,7 +211,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
         "evals per sentence",
         "preds",
     ]
-    data = [columns]
+    at_results = [columns]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     seed = 0
     surrogate_model, sur_tok, sur_emb, sur_path = bms[1]
@@ -317,7 +317,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
                     gen_results["model_preds"],
                 ]
                 print(row)
-                data.append(row)
+                at_results.append(row)
 
     # save preds and labels
     torch.save(
@@ -329,7 +329,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
         config.PRED_PATH
         + f"adversarial_training_test_baselines_and_labels_{timestamp}.npy",
     )
-    return data
+    return at_results
 
 
 def write_csv(data, file_name):
