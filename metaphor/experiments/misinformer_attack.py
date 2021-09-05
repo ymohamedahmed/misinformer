@@ -348,7 +348,7 @@ def main():
     # data = genetic_adversary_experiments(pheme, train_lime_scores)
     # write_csv(data, config.PRED_PATH + f"genetic_adversary_{timestamp}.csv")
 
-    data = genetic_adversary_experiments(train_lime_scores, pheme_path)
+    data = adversarial_training_experiments(train_lime_scores, pheme_path)
     write_csv(data, config.PRED_PATH + f"adversarial_training_{timestamp}.csv")
 
     """
