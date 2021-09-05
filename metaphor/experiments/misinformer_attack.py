@@ -152,7 +152,7 @@ def genetic_adversary_experiments(pheme, lime_scores):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
     for paraphrase in [False]:
-        for number_of_concats in range(4):
+        for number_of_concats in range(5):
             for max_lev in range(1, 4):
                 mis = Misinformer(
                     lime_scores.copy(),
@@ -197,7 +197,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
     # augment tensor is size:  num_sentences x 32 x sentence_length x embedding_dim
     paraphrase, number_of_concats, max_lev = False, 4, 2
     bms = _best_models()
-    timestamp = {time.strftime("%d-%m-%y-%H:%M:%S", time.localtime())}
+    timestamp = time.strftime("%d-%m-%y-%H:%M:%S", time.localtime())
     columns = [
         "model",
         "train acc",
@@ -352,7 +352,7 @@ def main():
         tokenizer=lambda x: x,
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
-    timestamp = {time.strftime("%d-%m-%y-%H:%M:%S", time.localtime())}
+    timestamp = time.strftime("%d-%m-%y-%H-%M", time.localtime())
     # data = fixed_adversary_experiments(pheme, train_lime_scores)
     # write_csv(data, config.PRED_PATH + "fixed_adversary.csv")
     # data = genetic_adversary_experiments(pheme, train_lime_scores)
@@ -360,33 +360,6 @@ def main():
 
     data = adversarial_training_experiments(train_lime_scores, pheme_path)
     write_csv(data, config.PRED_PATH + f"adversarial_training_{timestamp}.csv")
-
-    """
-    tokenizer = CustomBertTokenizer()
-    embedding = Bert(tokenizer=tokenizer)
-    layers = [768, 25, 5, 3]
-    args = {}
-    args["tokenizer"] = tokenizer
-    model = MisinformationModel(MeanPooler(**args), MLP(layers))
-    model.load_state_dict(torch.load(config.PATH + "seed-0-bert-cnn-nlp.npy"))
-    embedding.to(device)
-    test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
-    sur_model = MisinformationModel(MaxPooler(**args), MLP(layers))
-    sur_model.load_state_dict(torch.load(config.PATH + "seed-0-bert-cnn.npy"))
-    sur_tok = tokenizer
-    sur_emb = embedding
-
-    mis.genetic_attack(
-        model=model,
-        surrogate_model=sur_model,
-        test_sentences=test_sentences,
-        test_labels=pheme.labels[pheme.test_indxs],
-        tokenizer=tokenizer,
-        embedding=embedding,
-        surrogate_tokenizer=sur_tok,
-        surrogate_embedding=sur_emb,
-    )
-    """
 
 
 if __name__ == "__main__":
