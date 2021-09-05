@@ -253,6 +253,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
                 adv = [y for x in train_sentences for y in mis._gen_attacks(x)]
                 tokenized = tokenizer(adv)
                 embedding.to(device)
+                tokenized = tokenized.to(device)
                 adv_emb = embedding(tokenized)
                 adv_emb = adv_emb.reshape(
                     (len(train_sentences), 32, tokenized.shape[1], -1)
