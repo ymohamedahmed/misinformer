@@ -296,7 +296,7 @@ class PhemeDataset(torch.utils.data.Dataset):
     def __getitem__(
         self, index: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        if self.aug is not None:
+        if self._aug is not None:
             if np.random.uniform() < self._aug_p:
                 rand = np.random.randint(low=0, high=self._aug.shape[1])
                 return (

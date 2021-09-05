@@ -310,6 +310,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
                     gen_results["eval_per_sentence"],
                     gen_results["model_preds"],
                 ]
+                print(row)
                 data.append(row)
 
     # save preds and labels
