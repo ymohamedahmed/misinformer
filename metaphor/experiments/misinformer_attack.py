@@ -240,7 +240,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
     )
     baselines_and_labels = torch.zeros((2, len(test_sentences)))
 
-    for emb_ind in range(2, 3):
+    for emb_ind in range(1):
         for agg_ind in range(4):
             for class_ind in range(2):
                 model, tokenizer, embedding = supervised_baselines.instantiate_model(
