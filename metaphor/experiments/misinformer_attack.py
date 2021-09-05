@@ -313,7 +313,7 @@ def adversarial_training_experiments(lime_scores, pheme_path):
                     paraphrase,
                     number_of_concats,
                     max_lev,
-                    gen_results["eval_per_sentence"],
+                    gen_results["evals_per_sentence"],
                     gen_results["model_preds"],
                 ]
                 print(row)
