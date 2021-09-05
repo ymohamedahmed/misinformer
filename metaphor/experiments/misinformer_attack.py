@@ -4,6 +4,7 @@ from metaphor.utils.trainer import ClassifierTrainer
 from tqdm import tqdm
 import time
 import csv
+import wandb
 from metaphor.models.common import (
     Bert,
     RNN,
@@ -243,12 +244,16 @@ def adversarial_training_experiments(lime_scores, pheme_path):
     for emb_ind in range(1):
         for agg_ind in range(4):
             for class_ind in range(2):
+                wandb.init(project="metaphor", entity="youmed", reinit=True)
+                wandb_config = wandb.config
                 model, tokenizer, embedding = supervised_baselines.instantiate_model(
                     emb_ind, agg_ind, class_ind
                 )
                 model_name = supervised_baselines.model_name(
                     seed, emb_ind, agg_ind, class_ind
                 )
+                wandb_config.args = f"AT-{model_name}"
+                wandb.watch(model)
 
                 adv = [y for x in train_sentences for y in mis._gen_attacks(x)[0]]
                 # tokenized = tokenizer(adv)
