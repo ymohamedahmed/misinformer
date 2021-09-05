@@ -51,12 +51,19 @@ class Pheme:
         tokenized_sentences = tokenizer(sentences)
         embedding = embedder(tokenized_sentences)
 
+        augmentation = None
+        if augmented_sentences is not None:
+            # embedding has shape (N+len(augmented_sentences))*max_sentence_len*embedding_dim
+            # We want it reshaped into max_sentence_len * len(augmented_sentences) * embedding_dim
+            x, y, z = embedding.shape
+            augmentation = embedding[N:].reshape((y, x - N, z))
+
         self.train = torch.utils.data.DataLoader(
             PhemeDataset(
                 self.train_indxs,
                 embedding[self.train_indxs],
                 labels[self.train_indxs],
-                augmentation=embedding[N:],
+                augmentation=augmentation,
             ),
             batch_size=batch_size,
         )
