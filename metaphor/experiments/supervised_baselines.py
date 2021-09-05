@@ -72,29 +72,57 @@ args = [
     [pool_args, {}, glove_cnn_args, glove_rnn_args],
     [pool_args, {}, word2vec_cnn_args, word2vec_rnn_args],
 ]
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+trainer_args = {
+    "lr": 0.001,
+    "patience": 30,
+    "weight_decay": 0.01,
+    "num_epochs": 400,
+    "device": device,
+    "loss": nn.CrossEntropyLoss(),
+}
+file_names = [
+    ["bert-mean", "bert-max", "bert-cnn", "bert-rnn"],
+    ["glove-mean", "glove-max", "glove-cnn", "glove-rnn"],
+    [
+        "word2vec-mean",
+        "word2vec-max",
+        "word2vec-cnn",
+        "word2vec-rnn",
+    ],
+]
+
+
+def model_name(seed, emb_ind, agg_ind, class_ind):
+    return (
+        f"seed-{seed}-"
+        + file_names[emb_ind][agg_ind]
+        + "-"
+        + ("mlp" if class_ind == 0 else "logreg")
+        + ".npy"
+    )
+
+
+def instantiate_model(emb_ind, agg_ind, class_ind):
+    # takes the index of the embedding i.e. bert, glove or word2vec
+    # index of aggregator: mean-pool, max-pool, cnn or rnn
+    # index of classifier: mlp or logistic regressor
+    classifier_model = (
+        MLP(layers[emb_ind][agg_ind])
+        if class_ind == 0
+        else LogisticRegressor(layers[emb_ind][agg_ind][0])
+    )
+    tokenizer = tokenizers[emb_ind]()
+    args[emb_ind][agg_ind]["tokenizer"] = tokenizer
+    classifier = MisinformationModel(
+        aggregators[agg_ind](**args[emb_ind][agg_ind]), classifier_model
+    )
+    embedding = embeddings[emb_ind](tokenizer)
+    return (classifier, tokenizer, embedding)
 
 
 # run all combinations of models
 def main():
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    trainer_args = {
-        "lr": 0.001,
-        "patience": 30,
-        "weight_decay": 0.01,
-        "num_epochs": 400,
-        "device": device,
-        "loss": nn.CrossEntropyLoss(),
-    }
-    file_names = [
-        ["bert-mean", "bert-max", "bert-cnn", "bert-rnn"],
-        ["glove-mean", "glove-max", "glove-cnn", "glove-rnn"],
-        [
-            "word2vec-mean",
-            "word2vec-max",
-            "word2vec-cnn",
-            "word2vec-rnn",
-        ],
-    ]
 
     pheme_path = os.path.join(
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
@@ -131,14 +159,7 @@ def main():
                     wandb_config = wandb.config
                     wandb_config.args = args[i][j]
                     wandb_config.layers = layers[i][j]
-                    classifier_model = (
-                        MLP(layers[i][j])
-                        if classifier_ind == 0
-                        else LogisticRegressor(layers[i][j][0])
-                    )
-                    classifier = MisinformationModel(
-                        aggregators[j](**args[i][j]), classifier_model
-                    )
+                    classifier = instantiate_model(i, j, classifier_ind)
                     wandb.watch(classifier)
                     classifier.to(device)
                     print(classifier)
@@ -149,11 +170,7 @@ def main():
                     # log results and save model
                     torch.save(
                         classifier.state_dict(),
-                        config.PATH
-                        + f"seed-{seed}-"
-                        + file_names[i][j]
-                        + ("mlp" if classifier_ind == 0 else "logistic-regressor")
-                        + ".npy",
+                        config.PATH + model_name(seed, i, j, classifier_ind),
                     )
                     preds = []
                     for x, y in data.test:

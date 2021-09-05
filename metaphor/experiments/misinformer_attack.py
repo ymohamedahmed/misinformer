@@ -1,6 +1,8 @@
 from metaphor.utils.utils import load_obj, predict
 from metaphor.adversary.attacks import Misinformer
+from metaphor.utils.trainer import ClassifierTrainer
 from tqdm import tqdm
+import time
 import csv
 from metaphor.models.common import (
     Bert,
@@ -21,6 +23,7 @@ from pathlib import Path
 import os
 import torch
 from metaphor.data.loading.data_loader import Pheme, MisinformationPheme
+import supervised_baselines
 import config
 
 # TODO: perform on each model
@@ -142,14 +145,14 @@ def genetic_adversary_experiments(pheme, lime_scores):
         "minimum possible accuracy",
         "hit rate",
         "evals per sentence",
+        "preds",
     ]
     data = [columns]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
-    paraphrase = False
-    for paraphrase in [False, True]:
+    for paraphrase in [False]:
         for number_of_concats in range(4):
-            for max_lev in range(1, 3):
+            for max_lev in range(1, 4):
                 mis = Misinformer(
                     lime_scores.copy(),
                     attacks=[
@@ -182,17 +185,42 @@ def genetic_adversary_experiments(pheme, lime_scores):
                     results["min_acc"],
                     results["hit_rate"],
                     results["evals_per_sentence"],
+                    results["model_preds"],
                 ]
                 data.append(row)
     return data
 
 
-def adversarial_training_experiments(lime_scores):
+def adversarial_training_experiments(lime_scores, pheme_path):
     # using the best model train with augmentation prob. p to mix in results from _gen_attacks
     # augment tensor is size:  num_sentences x 32 x sentence_length x embedding_dim
     paraphrase, number_of_concats, max_lev = False, 4, 2
     bms = _best_models()
+    timestamp = {time.strftime("%d-%m-%y-%H:%M:%S", time.localtime())}
+    columns = [
+        "model",
+        "train acc",
+        "unattacked test acc",
+        "attacked test acc",
+        "hit rate",
+        "minimum accuracy",
+        "paraphrased",
+        "number of concats",
+        "max levenshtein",
+        "evals per sentence",
+        "preds",
+    ]
+    data = [columns]
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    seed = 0
     surrogate_model, sur_tok, sur_emb, sur_path = bms[1]
+    pheme = MisinformationPheme(
+        file_path=pheme_path,
+        tokenizer=lambda x: x,
+        embedder=lambda x: torch.zeros((len(x), 200)),
+    )
+    train_sentences = [pheme.data["text"].values[i] for i in pheme.train_indxs]
+    test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
     mis = Misinformer(
         lime_scores.copy(),
         attacks=[
@@ -203,42 +231,95 @@ def adversarial_training_experiments(lime_scores):
         max_levenshtein=max_lev,
         number_of_concats=number_of_concats,
     )
-    train_sentences = ...
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    seed = 0
-
-    adv = [y for x in train_sentences for y in mis._gen_attacks(x)]
-    tokenized = tokenizer(adv)
-    embedding.to(device)
-    adv_emb = embedding(tokenized)
-
-    model = ...
-
-    data = MisinformationPheme(
-        file_path=pheme_path,
-        tokenizer=tokenizer,
-        embedder=embeddings[i](tokenizer),
-        seed=seed,
-        augmentation=...,
+    predictions = torch.zeros(
+        (
+            4,  # number of aggregators
+            2,  # number of classifiers
+            len(test_sentences),
+        )
     )
+    baselines_and_labels = torch.zeros((2, len(test_sentences)))
 
-    trainer = ClassifierTrainer(**trainer_args)
-    results = trainer.fit(classifier, data.train, data.val)
+    for emb_ind in range(2, 3):
+        for agg_ind in range(4):
+            for class_ind in range(2):
+                model, tokenizer, embedding = supervised_baselines.get_model()
+                model_name = supervised_baselines.model_name(
+                    seed, emb_ind, agg_ind, class_ind
+                )
 
-    # attack
-    results = mis.genetic_attack(
-        model=model,
-        surrogate_model=surrogate_model,
-        test_sentences=test_sentences,
-        test_labels=pheme.labels[pheme.test_indxs],
-        tokenizer=tokenizer,
-        embedding=embedding,
-        surrogate_tokenizer=sur_tok,
-        surrogate_embedding=sur_emb,
-        max_generations=30,
+                adv = [y for x in train_sentences for y in mis._gen_attacks(x)]
+                tokenized = tokenizer(adv)
+                embedding.to(device)
+                adv_emb = embedding(tokenized)
+                data = MisinformationPheme(
+                    file_path=pheme_path,
+                    tokenizer=tokenizer,
+                    embedder=embedding,
+                    seed=seed,
+                    augmentation=adv_emb,
+                )
+                trainer = ClassifierTrainer(**supervised_baselines.trainer_args)
+                results = trainer.fit(model, data.train, data.val)
+
+                # compute train and test accuracy
+                # TODO save predictions
+
+                # preds on the unattacked test set
+                preds = []
+                for x, y in data.test:
+                    ind = x[0].to(device)
+                    emb = x[1].to(device)
+                    y_prime = model(emb, ind).argmax(dim=1).detach().cpu()
+                    preds = preds + y_prime.tolist()
+                predictions[agg_ind][class_ind] = torch.tensor(preds)
+
+                test_acc = (
+                    torch.tensor(preds)
+                    .eq(torch.from_numpy(data.labels[data.test_indxs]))
+                    .float()
+                    .mean()
+                    .item()
+                )
+
+                # attack
+                gen_results = mis.genetic_attack(
+                    model=model,
+                    surrogate_model=surrogate_model,
+                    test_sentences=test_sentences,
+                    test_labels=pheme.labels[pheme.test_indxs],
+                    tokenizer=tokenizer,
+                    embedding=embedding,
+                    surrogate_tokenizer=sur_tok,
+                    surrogate_embedding=sur_emb,
+                    max_generations=30,
+                )
+                row = [
+                    model_name,
+                    max(results["train_accuracy"]),
+                    test_acc,
+                    gen_results["new_acc"],
+                    gen_results["hit_rate"],
+                    gen_results["min_acc"],
+                    paraphrase,
+                    number_of_concats,
+                    max_lev,
+                    gen_results["eval_per_sentence"],
+                    gen_results["model_preds"],
+                ]
+                data.append(row)
+
+    # save preds and labels
+    torch.save(
+        predictions,
+        config.PRED_PATH + f"adversarial_training_test_preds_{timestamp}.npy",
     )
-
-    # compute train and test accuracy
+    torch.save(
+        baselines_and_labels,
+        config.PRED_PATH
+        + f"adversarial_training_test_baselines_and_labels_{timestamp}.npy",
+    )
+    return data
 
 
 def write_csv(data, file_name):
@@ -261,10 +342,14 @@ def main():
         tokenizer=lambda x: x,
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
+    timestamp = {time.strftime("%d-%m-%y-%H:%M:%S", time.localtime())}
     # data = fixed_adversary_experiments(pheme, train_lime_scores)
     # write_csv(data, config.PRED_PATH + "fixed_adversary.csv")
-    data = genetic_adversary_experiments(pheme, train_lime_scores)
-    write_csv(data, config.PRED_PATH + "genetic_adversary.csv")
+    # data = genetic_adversary_experiments(pheme, train_lime_scores)
+    # write_csv(data, config.PRED_PATH + f"genetic_adversary_{timestamp}.csv")
+
+    data = genetic_adversary_experiments(train_lime_scores, pheme_path)
+    write_csv(data, config.PRED_PATH + f"adversarial_training_{timestamp}.csv")
 
     """
     tokenizer = CustomBertTokenizer()

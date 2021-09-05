@@ -20,7 +20,10 @@ class Pheme:
         seed=0,
         splits: List[float] = [0.6, 0.2, 0.2],
         indxs=None,
+        augmentation=None,
     ):
+        # TODO add support for augmentation
+
         if not (os.path.exists(file_path)):
             raise Exception(f"No such path: {file_path}")
         np.random.seed(seed)
@@ -49,6 +52,7 @@ class Pheme:
                 self.train_indxs,
                 embedding[self.train_indxs],
                 labels[self.train_indxs],
+                augmentation=augmentation,
             ),
             batch_size=batch_size,
         )
@@ -281,6 +285,8 @@ class PhemeDataset(torch.utils.data.Dataset):
         self.tweet_ids = tweet_ids
         self.embedding = embedding
         self.labels = labels
+        self._aug = augmented_embeddings
+        self._aug_p = augment_prob
 
     def __len__(self):
         return self.embedding.shape[0]
@@ -288,4 +294,12 @@ class PhemeDataset(torch.utils.data.Dataset):
     def __getitem__(
         self, index: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        if self.aug is not None:
+            if np.random.uniform() < self._aug_p:
+                rand = np.random.randint(low=0, high=self._aug.shape[1])
+                return (
+                    self.tweet_ids[index],
+                    self._aug[index][rand],
+                ), self.labels[index]
+
         return (self.tweet_ids[index], self.embedding[index]), self.labels[index]
