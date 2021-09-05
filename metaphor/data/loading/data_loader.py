@@ -54,9 +54,11 @@ class Pheme:
         augmentation = None
         if augmented_sentences is not None:
             # embedding has shape (N+len(augmented_sentences))*max_sentence_len*embedding_dim
-            # We want it reshaped into max_sentence_len * len(augmented_sentences) * embedding_dim
+            # len(augmented_sentences) = number_of_augments_per_sentence (=32) * len(train_sentences)
+            # We want it reshaped into max_sentence_len * number_of_augments_per_sentence * embedding_dim
             x, y, z = embedding.shape
-            augmentation = embedding[N:].reshape((y, x - N, z))
+            aug_per_sent = (x - N) // len(self.train_indxs)
+            augmentation = embedding[N:].reshape((y, aug_per_sent, z))
 
         self.train = torch.utils.data.DataLoader(
             PhemeDataset(
