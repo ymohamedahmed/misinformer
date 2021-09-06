@@ -349,7 +349,7 @@ def main():
         "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/train_lime_scores"
     )
     neg_train_lime_scores = load_obj(
-        "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/train_lime_scores"
+        "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/neg_train_lime_scores"
     )
     pheme_path = os.path.join(
         Path(__file__).absolute().parent.parent.parent, "data/pheme/processed-pheme.csv"
