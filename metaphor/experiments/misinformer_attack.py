@@ -85,7 +85,7 @@ def _surrogate_models(index):
     return (model, tokenizer, embedding, paths[index])
 
 
-def fixed_adversary_experiments(pheme, lime_scores):
+def fixed_adversary_experiments(pheme, pos_lime_scores, neg_lime_scores):
     columns = [
         "model",
         "paraphrased",
@@ -102,7 +102,8 @@ def fixed_adversary_experiments(pheme, lime_scores):
         for paraphrase in [False, True]:
             for number_of_concats in range(4):
                 mis = Misinformer(
-                    lime_scores.copy(),
+                    pos_lime_scores=pos_lime_scores.copy(),
+                    neg_lime_scores=neg_lime_scores.copy(),
                     attacks=[
                         paraphrase,
                         True,
@@ -130,7 +131,7 @@ def fixed_adversary_experiments(pheme, lime_scores):
     return data
 
 
-def genetic_adversary_experiments(pheme, lime_scores):
+def genetic_adversary_experiments(pheme, pos_lime_scores, neg_lime_scores):
     # different parameters attacking the best model with the worst as the surrogate
     bms = _best_models()
     model, tokenizer, embedding, path = bms[0]
@@ -151,11 +152,12 @@ def genetic_adversary_experiments(pheme, lime_scores):
     data = [columns]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
-    for paraphrase in [False]:
+    for paraphrase in [False, True]:
         for number_of_concats in range(5):
             for max_lev in range(1, 4):
                 mis = Misinformer(
-                    lime_scores.copy(),
+                    pos_lime_scores=pos_lime_scores.copy(),
+                    neg_lime_scores=neg_lime_scores.copy(),
                     attacks=[
                         paraphrase,
                         True,
@@ -188,11 +190,12 @@ def genetic_adversary_experiments(pheme, lime_scores):
                     results["evals_per_sentence"],
                     results["model_preds"],
                 ]
+                print(row)
                 data.append(row)
     return data
 
 
-def adversarial_training_experiments(lime_scores, pheme_path):
+def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_path):
     # using the best model train with augmentation prob. p to mix in results from _gen_attacks
     # augment tensor is size:  num_sentences x 32 x sentence_length x embedding_dim
     paraphrase, number_of_concats, max_lev = False, 4, 2
@@ -223,7 +226,8 @@ def adversarial_training_experiments(lime_scores, pheme_path):
     train_sentences = [pheme.data["text"].values[i] for i in pheme.train_indxs]
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
     mis = Misinformer(
-        lime_scores.copy(),
+        pos_lime_scores=pos_lime_scores.copy(),
+        neg_lime_scores=neg_lime_scores.copy(),
         attacks=[
             paraphrase,
             True,
@@ -341,7 +345,10 @@ def write_csv(data, file_name):
 
 
 def main():
-    train_lime_scores = load_obj(
+    pos_train_lime_scores = load_obj(
+        "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/train_lime_scores"
+    )
+    neg_train_lime_scores = load_obj(
         "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/train_lime_scores"
     )
     pheme_path = os.path.join(
@@ -355,11 +362,11 @@ def main():
     timestamp = time.strftime("%d-%m-%y-%H-%M", time.localtime())
     # data = fixed_adversary_experiments(pheme, train_lime_scores)
     # write_csv(data, config.PRED_PATH + "fixed_adversary.csv")
-    # data = genetic_adversary_experiments(pheme, train_lime_scores)
-    # write_csv(data, config.PRED_PATH + f"genetic_adversary_{timestamp}.csv")
+    data = genetic_adversary_experiments(pheme, train_lime_scores)
+    write_csv(data, config.PRED_PATH + f"genetic_adversary_{timestamp}.csv")
 
-    data = adversarial_training_experiments(train_lime_scores, pheme_path)
-    write_csv(data, config.PRED_PATH + f"adversarial_training_{timestamp}.csv")
+    # data = adversarial_training_experiments(train_lime_scores, pheme_path)
+    # write_csv(data, config.PRED_PATH + f"adversarial_training_{timestamp}.csv")
 
 
 if __name__ == "__main__":

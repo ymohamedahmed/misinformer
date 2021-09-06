@@ -61,8 +61,8 @@ class ConcatenationAttack(Attack):
 
 
 class CharAttack(Attack):
-    def __init__(self, lime_scores, max_levenshtein=1, max_number_of_words=3):
-        self.lime_scores = lime_scores
+    def __init__(self, neg_lime_scores, max_levenshtein=1, max_number_of_words=3):
+        self.lime_scores = neg_lime_scores
         self.max_lev = max_levenshtein
         self.max_number_of_words = max_number_of_words
 
@@ -91,9 +91,6 @@ class CharAttack(Attack):
                         + np.random.choice(lower_chars)
                         + orig_word[ind + 1 :]
                     )
-        assert not (word.isspace()), f"New word: {word} orig: {orig_word}"
-        assert not (len(word.strip()) == 0), f"New word: {word} orig: {orig_word}"
-        assert not (word.isspace()), f"New word: {word} orig: {orig_word}"
         return word
 
     def attack(self, sentences: List[str]):
@@ -172,7 +169,8 @@ class ParaphraseAttack(Attack):
 class Misinformer(Attack):
     def __init__(
         self,
-        lime_scores,
+        pos_lime_scores,
+        neg_lime_scores,
         target=MisinformerMode.TRUE,
         attacks=[
             True,
@@ -196,7 +194,8 @@ class Misinformer(Attack):
                 f"Settings: para-{attacks[0]}-char-{attacks[1]}-concat-{attacks[2]}-number_concats-{number_of_concats}-max_lev-{max_levenshtein}-max_num_words-{max_number_of_words}"
             )
 
-        self.lime_scores = lime_scores
+        self.pos_lime_scores = pos_lime_scores
+        self.neg_lime_scores = neg_lime_scores
         if target == MisinformerMode.UNTARGETED:
             raise ValueError(
                 "Untargeted attacks are no longer supported; this is primarily for a True attack"
@@ -214,16 +213,17 @@ class Misinformer(Attack):
         )
         self.attacks = attacks
 
-        for k in self.lime_scores.keys():
-            self.lime_scores[k] = agg(self.lime_scores[k])
+        for s in [self.neg_lime_scores, self.pos_lime_scores]:
+            for k in s.keys():
+                s[k] = agg(s[k])
         self.paraphraser = ParaphraseAttack()
         self.char_attack = CharAttack(
-            self.lime_scores,
+            self.neg_lime_scores,
             max_levenshtein=max_levenshtein,
             max_number_of_words=max_number_of_words,
         )
         self.concat_attack = ConcatenationAttack(
-            self.lime_scores, number_of_concats=number_of_concats
+            self.pos_lime_scores, number_of_concats=number_of_concats
         )
 
     #  TODO: Add support for changing number of attacked sentences generated
