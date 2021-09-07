@@ -156,7 +156,7 @@ def genetic_adversary_experiments(
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
     for paraphrase in [False, True]:
         for number_of_concats in range(5):
-            for max_lev in range(1, 4):
+            for max_lev in range(1, 3):
                 mis = Misinformer(
                     pos_lime_scores=pos_lime_scores.copy(),
                     neg_lime_scores=neg_lime_scores.copy(),
