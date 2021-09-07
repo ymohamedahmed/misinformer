@@ -98,7 +98,7 @@ def fixed_adversary_experiments(pheme, pos_lime_scores, neg_lime_scores):
     data = [columns]
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
     models = _best_models()
-    for (model, tokenizer, embedding, path) in tqdm(models):
+    for (model, tokenizer, embedding, path) in models:
         for paraphrase in [False, True]:
             for number_of_concats in range(4):
                 for max_lev in range(1, 3):
