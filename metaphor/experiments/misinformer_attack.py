@@ -131,7 +131,9 @@ def fixed_adversary_experiments(pheme, pos_lime_scores, neg_lime_scores):
     return data
 
 
-def genetic_adversary_experiments(pheme, pos_lime_scores, neg_lime_scores):
+def genetic_adversary_experiments(
+    pheme, pos_lime_scores, neg_lime_scores, num_mutations=1
+):
     # different parameters attacking the best model with the worst as the surrogate
     bms = _best_models()
     model, tokenizer, embedding, path = bms[0]
@@ -177,6 +179,7 @@ def genetic_adversary_experiments(pheme, pos_lime_scores, neg_lime_scores):
                     surrogate_tokenizer=sur_tok,
                     surrogate_embedding=sur_emb,
                     max_generations=30,
+                    num_mutations=num_mutations,
                 )
                 row = [
                     path,
@@ -363,9 +366,9 @@ def main():
     # data = fixed_adversary_experiments(pheme, pos_train_lime_scores, neg_train_lime_scores)
     # write_csv(data, config.PRED_PATH + "fixed_adversary.csv")
     data = genetic_adversary_experiments(
-        pheme, pos_train_lime_scores, neg_train_lime_scores
+        pheme, pos_train_lime_scores, neg_train_lime_scores, num_mutations=4
     )
-    write_csv(data, config.PRED_PATH + f"genetic_adversary_{timestamp}.csv")
+    write_csv(data, config.PRED_PATH + f"genetic_adversary_{timestamp}_n_mutats_4.csv")
 
     # data = adversarial_training_experiments(pos_train_lime_scores, neg_train_lime_scores, pheme_path)
     # write_csv(data, config.PRED_PATH + f"adversarial_training_{timestamp}.csv")

@@ -337,27 +337,40 @@ class Misinformer(Attack):
                 concat_mask[ind].copy(),
             )
 
-    def _mutate(self, child_sentence, original, paraphrased, char_mask, concat_mask):
+    def _mutate(
+        self,
+        child_sentence,
+        original,
+        paraphrased,
+        char_mask,
+        concat_mask,
+        num_mutations,
+    ):
         # how to mutate whilst ensuring perturbation control.
         # pick a single word
         # -> if unattacked previously -> attack it and reset one of the character attacks at random
         # -> if it was character attacked -> reset it and perform a new character attack
         # -> if it was concat attacked -> remove it and replace with a new concat
         sent = child_sentence.split()
-        mutate_ind = np.random.choice(len(sent))
-        if not (char_mask[mutate_ind]) and not (concat_mask[mutate_ind]):
-            if char_mask.sum() > 0 and len(sent) == len(char_mask):
-                reset_ind = np.random.choice(len(sent), p=char_mask / char_mask.sum())
-                sent[reset_ind] = original.split()[reset_ind]
-                char_mask[reset_ind] = 0
-                char_mask[mutate_ind] = 1
-                sent[mutate_ind] = self.char_attack._attack(sent[mutate_ind])
-        elif char_mask[mutate_ind] == 1:
-            sent[mutate_ind] = self.char_attack._attack(original.split()[mutate_ind])
-        elif concat_mask[mutate_ind]:
-            attack = self.concat_attack._choose(1)
-            sent[mutate_ind] = attack[0]
-        return " ".join(sent), original, paraphrased, char_mask, concat_mask
+        for _ in range(num_mutations):
+            mutate_ind = np.random.choice(len(sent))
+            if not (char_mask[mutate_ind]) and not (concat_mask[mutate_ind]):
+                if char_mask.sum() > 0 and len(sent) == len(char_mask):
+                    reset_ind = np.random.choice(
+                        len(sent), p=char_mask / char_mask.sum()
+                    )
+                    sent[reset_ind] = original.split()[reset_ind]
+                    char_mask[reset_ind] = 0
+                    char_mask[mutate_ind] = 1
+                    sent[mutate_ind] = self.char_attack._attack(sent[mutate_ind])
+            elif char_mask[mutate_ind] == 1:
+                sent[mutate_ind] = self.char_attack._attack(
+                    original.split()[mutate_ind]
+                )
+            elif concat_mask[mutate_ind]:
+                attack = self.concat_attack._choose(1)
+                sent[mutate_ind] = attack[0]
+            return " ".join(sent), original, paraphrased, char_mask, concat_mask
 
     def _new_generation(
         self,
@@ -368,6 +381,7 @@ class Misinformer(Attack):
         char_masks,
         concat_masks,
         fitness,
+        num_mutations,
     ):
         # update the masks (paraphrased, char_masks, concat_masks)
         new_generation = []
@@ -412,6 +426,7 @@ class Misinformer(Attack):
                 child_paraphrased,
                 char_attack.copy(),
                 concat_attack.copy(),
+                num_mutations=num_mutations,
             )
             logging.info(f"Genetic Attack: child mutated into: {child}")
 
@@ -440,6 +455,7 @@ class Misinformer(Attack):
         surrogate_tokenizer,
         surrogate_embedding,
         max_generations=10,
+        num_mutations=1,
         batch_size=128,
     ):
         model_preds = []
@@ -507,6 +523,7 @@ class Misinformer(Attack):
                         char_masks=char_masks,
                         concat_masks=concat_masks,
                         fitness=fitness,
+                        num_mutations=num_mutations,
                     )
             evaluations_per_sentence.append(evaluations)
 
