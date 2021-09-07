@@ -297,7 +297,7 @@ class PhemeDataset(torch.utils.data.Dataset):
         embedding: torch.Tensor,
         labels: torch.Tensor,
         augmentation: torch.Tensor = None,
-        augment_prob=0.3,
+        augment_prob=0.7,
     ):
         super().__init__()
         self.tweet_ids = tweet_ids
