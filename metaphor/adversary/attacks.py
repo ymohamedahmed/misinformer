@@ -370,7 +370,7 @@ class Misinformer(Attack):
             elif concat_mask[mutate_ind]:
                 attack = self.concat_attack._choose(1)
                 sent[mutate_ind] = attack[0]
-            return " ".join(sent), original, paraphrased, char_mask, concat_mask
+        return " ".join(sent), original, paraphrased, char_mask, concat_mask
 
     def _new_generation(
         self,
