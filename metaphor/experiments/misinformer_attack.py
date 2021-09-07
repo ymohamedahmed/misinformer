@@ -101,33 +101,35 @@ def fixed_adversary_experiments(pheme, pos_lime_scores, neg_lime_scores):
     for (model, tokenizer, embedding, path) in tqdm(models):
         for paraphrase in [False, True]:
             for number_of_concats in range(4):
-                mis = Misinformer(
-                    pos_lime_scores=pos_lime_scores.copy(),
-                    neg_lime_scores=neg_lime_scores.copy(),
-                    attacks=[
+                for max_lev in range(1, 3):
+                    mis = Misinformer(
+                        pos_lime_scores=pos_lime_scores.copy(),
+                        neg_lime_scores=neg_lime_scores.copy(),
+                        attacks=[
+                            paraphrase,
+                            True,
+                            number_of_concats > 0,
+                        ],
+                        number_of_concats=number_of_concats,
+                        max_levenshtein=max_lev,
+                    )
+                    results = mis.attack(
+                        model=model,
+                        test_labels=pheme.labels[pheme.test_indxs],
+                        test_sentences=test_sentences,
+                        embedding=embedding,
+                        tokenizer=tokenizer,
+                    )
+                    row = [
+                        path,
                         paraphrase,
-                        True,
-                        number_of_concats > 0,
-                    ],
-                    number_of_concats=number_of_concats,
-                )
-                results = mis.attack(
-                    model=model,
-                    test_labels=pheme.labels[pheme.test_indxs],
-                    test_sentences=test_sentences,
-                    embedding=embedding,
-                    tokenizer=tokenizer,
-                )
-                row = [
-                    path,
-                    paraphrase,
-                    number_of_concats,
-                    2,
-                    results["new_acc"],
-                    results["min_acc"],
-                    results["hit_rate"],
-                ]
-                data.append(row)
+                        number_of_concats,
+                        max_lev,
+                        results["new_acc"],
+                        results["min_acc"],
+                        results["hit_rate"],
+                    ]
+                    data.append(row)
     return data
 
 
@@ -201,9 +203,9 @@ def genetic_adversary_experiments(
 def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_path):
     # using the best model train with augmentation prob. p to mix in results from _gen_attacks
     # augment tensor is size:  num_sentences x 32 x sentence_length x embedding_dim
-    paraphrase, number_of_concats, max_lev = False, 4, 2
+    # paraphrase, number_of_concats, max_lev = False, 4, 2
     bms = _best_models()
-    timestamp = time.strftime("%d-%m-%y-%H:%M:%S", time.localtime())
+    # timestamp = time.strftime("%d-%m-%y-%H:%M:%S", time.localtime())
     columns = [
         "model",
         "train acc",
@@ -228,114 +230,128 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
     )
     train_sentences = [pheme.data["text"].values[i] for i in pheme.train_indxs]
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
-    mis = Misinformer(
-        pos_lime_scores=pos_lime_scores.copy(),
-        neg_lime_scores=neg_lime_scores.copy(),
-        attacks=[
-            paraphrase,
-            True,
-            number_of_concats > 0,
-        ],
-        max_levenshtein=max_lev,
-        number_of_concats=number_of_concats,
-    )
-    predictions = torch.zeros(
-        (
-            4,  # number of aggregators
-            2,  # number of classifiers
-            len(test_sentences),
-        )
-    )
-    baselines_and_labels = torch.zeros((2, len(test_sentences)))
 
-    for emb_ind in range(1):
-        for agg_ind in range(4):
-            for class_ind in range(2):
-                wandb.init(project="metaphor", entity="youmed", reinit=True)
-                wandb_config = wandb.config
-                model, tokenizer, embedding = supervised_baselines.instantiate_model(
-                    emb_ind, agg_ind, class_ind
+    # predictions = torch.zeros(
+    #     (
+    #         4,  # number of aggregators
+    #         2,  # number of classifiers
+    #         len(test_sentences),
+    #     )
+    # )
+    # baselines_and_labels = torch.zeros((2, len(test_sentences)))
+
+    for paraphrase in [False, True]:
+        for number_of_concats in range(4):
+            for max_lev in range(1, 3):
+                mis = Misinformer(
+                    pos_lime_scores=pos_lime_scores.copy(),
+                    neg_lime_scores=neg_lime_scores.copy(),
+                    attacks=[
+                        paraphrase,
+                        True,
+                        number_of_concats > 0,
+                    ],
+                    max_levenshtein=max_lev,
+                    number_of_concats=number_of_concats,
                 )
-                model_name = supervised_baselines.model_name(
-                    seed, emb_ind, agg_ind, class_ind
-                )
-                wandb_config.args = f"AT-{model_name}"
-                wandb.watch(model)
+                for emb_ind in range(1):
+                    for agg_ind in range(4):
+                        for class_ind in range(2):
+                            wandb.init(project="metaphor", entity="youmed", reinit=True)
+                            wandb_config = wandb.config
+                            (
+                                model,
+                                tokenizer,
+                                embedding,
+                            ) = supervised_baselines.instantiate_model(
+                                emb_ind, agg_ind, class_ind
+                            )
+                            model_name = supervised_baselines.model_name(
+                                seed, emb_ind, agg_ind, class_ind
+                            )
+                            wandb_config.args = f"AT-{model_name}"
+                            wandb.watch(model)
 
-                adv = [y for x in train_sentences for y in mis._gen_attacks(x)[0]]
-                # tokenized = tokenizer(adv)
-                # embedding.to(device)
-                # tokenized = tokenized.to(device)
-                # adv_emb = embedding(tokenized)
-                # adv_emb = adv_emb.reshape(
-                #     (len(train_sentences), 32, tokenized.shape[1], -1)
-                # )
-                data = MisinformationPheme(
-                    file_path=pheme_path,
-                    tokenizer=tokenizer,
-                    embedder=embedding,
-                    seed=seed,
-                    augmented_sentences=adv,
-                )
-                model.to(device)
-                trainer = ClassifierTrainer(**supervised_baselines.trainer_args)
-                results = trainer.fit(model, data.train, data.val)
+                            adv = [
+                                y
+                                for x in train_sentences
+                                for y in mis._gen_attacks(x)[0]
+                            ]
+                            # tokenized = tokenizer(adv)
+                            # embedding.to(device)
+                            # tokenized = tokenized.to(device)
+                            # adv_emb = embedding(tokenized)
+                            # adv_emb = adv_emb.reshape(
+                            #     (len(train_sentences), 32, tokenized.shape[1], -1)
+                            # )
+                            data = MisinformationPheme(
+                                file_path=pheme_path,
+                                tokenizer=tokenizer,
+                                embedder=embedding,
+                                seed=seed,
+                                augmented_sentences=adv,
+                            )
+                            model.to(device)
+                            trainer = ClassifierTrainer(
+                                **supervised_baselines.trainer_args
+                            )
+                            results = trainer.fit(model, data.train, data.val)
 
-                # preds on the unattacked test set
-                preds = []
-                for x, y in data.test:
-                    ind = x[0].to(device)
-                    emb = x[1].to(device)
-                    y_prime = model(emb, ind).argmax(dim=1).detach().cpu()
-                    preds = preds + y_prime.tolist()
-                predictions[agg_ind][class_ind] = torch.tensor(preds)
+                            # preds on the unattacked test set
+                            preds = []
+                            for x, y in data.test:
+                                ind = x[0].to(device)
+                                emb = x[1].to(device)
+                                y_prime = model(emb, ind).argmax(dim=1).detach().cpu()
+                                preds = preds + y_prime.tolist()
+                            # predictions[agg_ind][class_ind] = torch.tensor(preds)
 
-                test_acc = (
-                    torch.tensor(preds)
-                    .eq(torch.from_numpy(data.labels[data.test_indxs]))
-                    .float()
-                    .mean()
-                    .item()
-                )
+                            test_acc = (
+                                torch.tensor(preds)
+                                .eq(torch.from_numpy(data.labels[data.test_indxs]))
+                                .float()
+                                .mean()
+                                .item()
+                            )
 
-                # attack
-                gen_results = mis.genetic_attack(
-                    model=model,
-                    surrogate_model=surrogate_model,
-                    test_sentences=test_sentences,
-                    test_labels=pheme.labels[pheme.test_indxs],
-                    tokenizer=tokenizer,
-                    embedding=embedding,
-                    surrogate_tokenizer=sur_tok,
-                    surrogate_embedding=sur_emb,
-                    max_generations=30,
-                )
-                row = [
-                    model_name,
-                    max(results["train_accuracy"]),
-                    test_acc,
-                    gen_results["new_acc"],
-                    gen_results["hit_rate"],
-                    gen_results["min_acc"],
-                    paraphrase,
-                    number_of_concats,
-                    max_lev,
-                    gen_results["evals_per_sentence"],
-                    gen_results["model_preds"],
-                ]
-                print(row)
-                at_results.append(row)
+                            # attack
+                            gen_results = mis.genetic_attack(
+                                model=model,
+                                surrogate_model=surrogate_model,
+                                test_sentences=test_sentences,
+                                test_labels=pheme.labels[pheme.test_indxs],
+                                tokenizer=tokenizer,
+                                embedding=embedding,
+                                surrogate_tokenizer=sur_tok,
+                                surrogate_embedding=sur_emb,
+                                max_generations=30,
+                            )
+                            row = [
+                                model_name,
+                                max(results["train_accuracy"]),
+                                test_acc,
+                                gen_results["new_acc"],
+                                gen_results["hit_rate"],
+                                gen_results["min_acc"],
+                                paraphrase,
+                                number_of_concats,
+                                max_lev,
+                                gen_results["evals_per_sentence"],
+                                gen_results["model_preds"],
+                            ]
+                            print(row)
+                            at_results.append(row)
 
-    # save preds and labels
-    torch.save(
-        predictions,
-        config.PRED_PATH + f"adversarial_training_test_preds_{timestamp}.npy",
-    )
-    torch.save(
-        baselines_and_labels,
-        config.PRED_PATH
-        + f"adversarial_training_test_baselines_and_labels_{timestamp}.npy",
-    )
+    # # save preds and labels
+    # torch.save(
+    #     predictions,
+    #     config.PRED_PATH + f"adversarial_training_test_preds_{timestamp}.npy",
+    # )
+    # torch.save(
+    #     baselines_and_labels,
+    #     config.PRED_PATH
+    #     + f"adversarial_training_test_baselines_and_labels_{timestamp}.npy",
+    # )
     return at_results
 
 
@@ -363,15 +379,19 @@ def main():
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
     timestamp = time.strftime("%d-%m-%y-%H-%M", time.localtime())
-    # data = fixed_adversary_experiments(pheme, pos_train_lime_scores, neg_train_lime_scores)
-    # write_csv(data, config.PRED_PATH + "fixed_adversary.csv")
-    data = genetic_adversary_experiments(
-        pheme, pos_train_lime_scores, neg_train_lime_scores, num_mutations=4
+    data = fixed_adversary_experiments(
+        pheme, pos_train_lime_scores, neg_train_lime_scores
     )
-    write_csv(data, config.PRED_PATH + f"genetic_adversary_{timestamp}_n_mutats_4.csv")
+    write_csv(data, config.PRED_PATH + "fixed_adversary.csv")
+    # data = genetic_adversary_experiments(
+    # pheme, pos_train_lime_scores, neg_train_lime_scores, num_mutations=4
+    # )
+    # write_csv(data, config.PRED_PATH + f"genetic_adversary_{timestamp}_n_mutats_4.csv")
 
-    # data = adversarial_training_experiments(pos_train_lime_scores, neg_train_lime_scores, pheme_path)
-    # write_csv(data, config.PRED_PATH + f"adversarial_training_{timestamp}.csv")
+    data = adversarial_training_experiments(
+        pos_train_lime_scores, neg_train_lime_scores, pheme_path
+    )
+    write_csv(data, config.PRED_PATH + f"adversarial_training_{timestamp}.csv")
 
 
 if __name__ == "__main__":
