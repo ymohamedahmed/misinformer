@@ -379,10 +379,10 @@ def main():
         embedder=lambda x: torch.zeros((len(x), 200)),
     )
     timestamp = time.strftime("%d-%m-%y-%H-%M", time.localtime())
-    data = fixed_adversary_experiments(
-        pheme, pos_train_lime_scores, neg_train_lime_scores
-    )
-    write_csv(data, config.PRED_PATH + "fixed_adversary.csv")
+    # data = fixed_adversary_experiments(
+    # pheme, pos_train_lime_scores, neg_train_lime_scores
+    # )
+    # write_csv(data, config.PRED_PATH + "fixed_adversary.csv")
     # data = genetic_adversary_experiments(
     # pheme, pos_train_lime_scores, neg_train_lime_scores, num_mutations=4
     # )
