@@ -241,7 +241,7 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
     # )
     # baselines_and_labels = torch.zeros((2, len(test_sentences)))
 
-    for paraphrase in [False, True]:
+    for paraphrase in [True]:
         for number_of_concats in range(4):
             for max_lev in range(1, 3):
                 mis = Misinformer(
