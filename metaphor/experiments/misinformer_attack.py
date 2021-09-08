@@ -97,7 +97,7 @@ def fixed_adversary_experiments(pheme, pos_lime_scores, neg_lime_scores):
     ]
     data = [columns]
     test_sentences = [pheme.data["text"].values[i] for i in pheme.test_indxs]
-    models = _best_models()
+    models = _best_models()[0]
     for (model, tokenizer, embedding, path) in models:
         for paraphrase in [False, True]:
             for number_of_concats in range(4):
@@ -205,6 +205,7 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
     # augment tensor is size:  num_sentences x 32 x sentence_length x embedding_dim
     # paraphrase, number_of_concats, max_lev = False, 4, 2
     bms = _best_models()
+    model, tokenizer, embedding, path = bms[0]
     # timestamp = time.strftime("%d-%m-%y-%H:%M:%S", time.localtime())
     columns = [
         "model",
@@ -254,93 +255,82 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
                     max_levenshtein=max_lev,
                     number_of_concats=number_of_concats,
                 )
-                for emb_ind in range(1):
-                    for agg_ind in range(4):
-                        for class_ind in range(2):
-                            wandb.init(project="metaphor", entity="youmed", reinit=True)
-                            wandb_config = wandb.config
-                            (
-                                model,
-                                tokenizer,
-                                embedding,
-                            ) = supervised_baselines.instantiate_model(
-                                emb_ind, agg_ind, class_ind
-                            )
-                            model_name = supervised_baselines.model_name(
-                                seed, emb_ind, agg_ind, class_ind
-                            )
-                            wandb_config.args = f"AT-{model_name}"
-                            wandb.watch(model)
+                wandb.init(project="metaphor", entity="youmed", reinit=True)
+                wandb_config = wandb.config
+                # (
+                # model,
+                # tokenizer,
+                # embedding,
+                # ) = supervised_baselines.instantiate_model(emb_ind, agg_ind, class_ind)
+                # model_name = supervised_baselines.model_name(
+                # seed, emb_ind, agg_ind, class_ind
+                # )
+                wandb_config.args = f"AT-{path}"
+                wandb.watch(model)
 
-                            adv = [
-                                y
-                                for x in train_sentences
-                                for y in mis._gen_attacks(x)[0]
-                            ]
-                            # tokenized = tokenizer(adv)
-                            # embedding.to(device)
-                            # tokenized = tokenized.to(device)
-                            # adv_emb = embedding(tokenized)
-                            # adv_emb = adv_emb.reshape(
-                            #     (len(train_sentences), 32, tokenized.shape[1], -1)
-                            # )
-                            data = MisinformationPheme(
-                                file_path=pheme_path,
-                                tokenizer=tokenizer,
-                                embedder=embedding,
-                                seed=seed,
-                                augmented_sentences=adv,
-                            )
-                            model.to(device)
-                            trainer = ClassifierTrainer(
-                                **supervised_baselines.trainer_args
-                            )
-                            results = trainer.fit(model, data.train, data.val)
+                adv = [y for x in train_sentences for y in mis._gen_attacks(x)[0]]
+                # tokenized = tokenizer(adv)
+                # embedding.to(device)
+                # tokenized = tokenized.to(device)
+                # adv_emb = embedding(tokenized)
+                # adv_emb = adv_emb.reshape(
+                #     (len(train_sentences), 32, tokenized.shape[1], -1)
+                # )
+                data = MisinformationPheme(
+                    file_path=pheme_path,
+                    tokenizer=tokenizer,
+                    embedder=embedding,
+                    seed=seed,
+                    augmented_sentences=adv,
+                )
+                model.to(device)
+                trainer = ClassifierTrainer(**supervised_baselines.trainer_args)
+                results = trainer.fit(model, data.train, data.val)
 
-                            # preds on the unattacked test set
-                            preds = []
-                            for x, y in data.test:
-                                ind = x[0].to(device)
-                                emb = x[1].to(device)
-                                y_prime = model(emb, ind).argmax(dim=1).detach().cpu()
-                                preds = preds + y_prime.tolist()
-                            # predictions[agg_ind][class_ind] = torch.tensor(preds)
+                # preds on the unattacked test set
+                preds = []
+                for x, y in data.test:
+                    ind = x[0].to(device)
+                    emb = x[1].to(device)
+                    y_prime = model(emb, ind).argmax(dim=1).detach().cpu()
+                    preds = preds + y_prime.tolist()
+                # predictions[agg_ind][class_ind] = torch.tensor(preds)
 
-                            test_acc = (
-                                torch.tensor(preds)
-                                .eq(torch.from_numpy(data.labels[data.test_indxs]))
-                                .float()
-                                .mean()
-                                .item()
-                            )
+                test_acc = (
+                    torch.tensor(preds)
+                    .eq(torch.from_numpy(data.labels[data.test_indxs]))
+                    .float()
+                    .mean()
+                    .item()
+                )
 
-                            # attack
-                            gen_results = mis.genetic_attack(
-                                model=model,
-                                surrogate_model=surrogate_model,
-                                test_sentences=test_sentences,
-                                test_labels=pheme.labels[pheme.test_indxs],
-                                tokenizer=tokenizer,
-                                embedding=embedding,
-                                surrogate_tokenizer=sur_tok,
-                                surrogate_embedding=sur_emb,
-                                max_generations=30,
-                            )
-                            row = [
-                                model_name,
-                                max(results["train_accuracy"]),
-                                test_acc,
-                                gen_results["new_acc"],
-                                gen_results["hit_rate"],
-                                gen_results["min_acc"],
-                                paraphrase,
-                                number_of_concats,
-                                max_lev,
-                                gen_results["evals_per_sentence"],
-                                gen_results["model_preds"],
-                            ]
-                            print(row)
-                            at_results.append(row)
+                # attack
+                gen_results = mis.genetic_attack(
+                    model=model,
+                    surrogate_model=surrogate_model,
+                    test_sentences=test_sentences,
+                    test_labels=pheme.labels[pheme.test_indxs],
+                    tokenizer=tokenizer,
+                    embedding=embedding,
+                    surrogate_tokenizer=sur_tok,
+                    surrogate_embedding=sur_emb,
+                    max_generations=30,
+                )
+                row = [
+                    path,
+                    max(results["train_accuracy"]),
+                    test_acc,
+                    gen_results["new_acc"],
+                    gen_results["hit_rate"],
+                    gen_results["min_acc"],
+                    paraphrase,
+                    number_of_concats,
+                    max_lev,
+                    gen_results["evals_per_sentence"],
+                    gen_results["model_preds"],
+                ]
+                print(row)
+                at_results.append(row)
 
     # # save preds and labels
     # torch.save(
