@@ -1,5 +1,5 @@
 from metaphor.utils.utils import load_obj, predict
-from metaphor.adversary.attacks import Misinformer
+from metaphor.adversary.attacks import Misinformer, ParaphraseAttack
 from metaphor.utils.trainer import ClassifierTrainer
 from tqdm import tqdm
 import time
@@ -243,6 +243,7 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
     # )
     # baselines_and_labels = torch.zeros((2, len(test_sentences)))
 
+    paraphraser = ParaphraseAttack()
     for paraphrase in [True]:
         for number_of_concats in range(4):
             for max_lev in range(1, 3):
@@ -255,6 +256,7 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
                         True,
                         number_of_concats > 0,
                     ],
+                    pre_initialised_paraphraser=paraphraser,
                     max_levenshtein=max_lev,
                     number_of_concats=number_of_concats,
                 )

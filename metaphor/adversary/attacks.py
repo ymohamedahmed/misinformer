@@ -182,6 +182,7 @@ class Misinformer(Attack):
         max_number_of_words=3,
         seed=0,
         log_to_file=True,
+        pre_initialised_paraphraser=None,
     ):
         # lime scores is of the form word -> [false-score, unverified-score, true-score]
         np.random.seed(seed)
@@ -216,7 +217,10 @@ class Misinformer(Attack):
         for s in [self.neg_lime_scores, self.pos_lime_scores]:
             for k in s.keys():
                 s[k] = agg(s[k])
-        self.paraphraser = ParaphraseAttack()
+        if pre_initialised_paraphraser is not None:
+            self.paraphraser = pre_initialised_paraphraser
+        else:
+            self.paraphraser = ParaphraseAttack()
         self.char_attack = CharAttack(
             self.neg_lime_scores,
             max_levenshtein=max_levenshtein,

@@ -17,7 +17,9 @@ class Tokenizer:
 
 class CustomBertTokenizer(Tokenizer):
     def __init__(self):
-        self.tokenizer = transformers.BertTokenizer.from_pretrained("bert-base-uncased")
+        self.tokenizer = transformers.BertTokenizer.from_pretrained(
+            "bert-base-uncased", use_fast=True
+        )
 
     def __call__(self, sentences: List[str]) -> torch.Tensor:
         tokens = self.tokenizer(
