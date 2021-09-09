@@ -255,8 +255,8 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
                     max_levenshtein=max_lev,
                     number_of_concats=number_of_concats,
                 )
-                wandb.init(project="metaphor", entity="youmed", reinit=True)
-                wandb_config = wandb.config
+                # wandb.init(project="metaphor", entity="youmed", reinit=True)
+                # wandb_config = wandb.config
                 # (
                 # model,
                 # tokenizer,
@@ -265,8 +265,8 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
                 # model_name = supervised_baselines.model_name(
                 # seed, emb_ind, agg_ind, class_ind
                 # )
-                wandb_config.args = f"AT-{path}"
-                wandb.watch(model)
+                # wandb_config.args = f"AT-{path}"
+                # wandb.watch(model)
 
                 adv = [y for x in train_sentences for y in mis._gen_attacks(x)[0]]
                 # tokenized = tokenizer(adv)
