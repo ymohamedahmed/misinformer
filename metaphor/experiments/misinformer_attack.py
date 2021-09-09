@@ -222,6 +222,7 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
     ]
     at_results = [columns]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    embedding.to(device)
     model.to(device)
     seed = 0
     surrogate_model, sur_tok, sur_emb, sur_path = bms[1]
@@ -245,6 +246,7 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
     for paraphrase in [True]:
         for number_of_concats in range(4):
             for max_lev in range(1, 3):
+                print("init misinformer")
                 mis = Misinformer(
                     pos_lime_scores=pos_lime_scores.copy(),
                     neg_lime_scores=neg_lime_scores.copy(),
@@ -269,7 +271,8 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
                 # wandb_config.args = f"AT-{path}"
                 # wandb.watch(model)
 
-                adv = [y for x in train_sentences for y in mis._gen_attacks(x)[0]]
+                adv = [y for x in train_sentences for y in mis._gen_attacks(x)[0][:5]]
+                print("init data")
                 data = MisinformationPheme(
                     file_path=pheme_path,
                     tokenizer=tokenizer,
@@ -284,10 +287,12 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
                 # adv_emb = adv_emb.reshape(
                 #     (len(train_sentences), 32, tokenized.shape[1], -1)
                 # )
+                print("init trainer")
                 trainer = ClassifierTrainer(**supervised_baselines.trainer_args)
                 results = trainer.fit(model, data.train, data.val)
 
                 # preds on the unattacked test set
+                print("eval on test")
                 preds = []
                 for x, y in data.test:
                     ind = x[0].to(device)
@@ -305,6 +310,7 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
                 )
 
                 # attack
+                print("genetic attack")
                 gen_results = mis.genetic_attack(
                     model=model,
                     surrogate_model=surrogate_model,

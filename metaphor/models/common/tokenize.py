@@ -17,7 +17,10 @@ class Tokenizer:
 
 class CustomBertTokenizer(Tokenizer):
     def __init__(self):
-        self.tokenizer = transformers.BertTokenizer.from_pretrained("bert-base-uncased")
+        device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.tokenizer = transformers.BertTokenizer.from_pretrained(
+            "bert-base-uncased"
+        ).to(device)
 
     def __call__(self, sentences: List[str]) -> torch.Tensor:
         tokens = self.tokenizer(
