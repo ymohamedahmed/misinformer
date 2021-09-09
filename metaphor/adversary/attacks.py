@@ -125,7 +125,9 @@ class ParaphraseAttack(Attack):
         attempts: int = 4,
         path: str = None,
     ):
-        self.tokenizer = AutoTokenizer.from_pretrained("Vamsi/T5_Paraphrase_Paws")
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            "Vamsi/T5_Paraphrase_Paws", use_fast=True
+        )
         self.path = path
         self.model = AutoModelForSeq2SeqLM.from_pretrained("Vamsi/T5_Paraphrase_Paws")
         self.device = device
