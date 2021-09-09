@@ -222,6 +222,7 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
     ]
     at_results = [columns]
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model.to(device)
     seed = 0
     surrogate_model, sur_tok, sur_emb, sur_path = bms[1]
     pheme = MisinformationPheme(
@@ -269,13 +270,6 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
                 # wandb.watch(model)
 
                 adv = [y for x in train_sentences for y in mis._gen_attacks(x)[0]]
-                # tokenized = tokenizer(adv)
-                # embedding.to(device)
-                # tokenized = tokenized.to(device)
-                # adv_emb = embedding(tokenized)
-                # adv_emb = adv_emb.reshape(
-                #     (len(train_sentences), 32, tokenized.shape[1], -1)
-                # )
                 data = MisinformationPheme(
                     file_path=pheme_path,
                     tokenizer=tokenizer,
@@ -283,7 +277,13 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
                     seed=seed,
                     augmented_sentences=adv,
                 )
-                model.to(device)
+                # tokenized = tokenizer(adv)
+                # embedding.to(device)
+                # tokenized = tokenized.to(device)
+                # adv_emb = embedding(tokenized)
+                # adv_emb = adv_emb.reshape(
+                #     (len(train_sentences), 32, tokenized.shape[1], -1)
+                # )
                 trainer = ClassifierTrainer(**supervised_baselines.trainer_args)
                 results = trainer.fit(model, data.train, data.val)
 
