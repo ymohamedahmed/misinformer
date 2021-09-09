@@ -331,6 +331,8 @@ def adversarial_training_experiments(pos_lime_scores, neg_lime_scores, pheme_pat
                 ]
                 print(row)
                 at_results.append(row)
+                del data
+                del mis
 
     # # save preds and labels
     # torch.save(
