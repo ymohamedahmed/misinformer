@@ -27,9 +27,7 @@ from metaphor.data.loading.data_loader import Pheme, MisinformationPheme
 import supervised_baselines
 import config
 
-# TODO: perform on each model
-# Repeat for different perturbation control in the fixed attack case
-# Perform genetic adversarial attack and record the number of attacks before change
+
 def _best_models():
     # Give in the form path, tokenizer, embedding, Aggregator, seed
     paths = [
