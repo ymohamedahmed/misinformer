@@ -623,18 +623,3 @@ class KSynonymAttack(Attack):
                     new_sent[j] = np.random.choice(synonyms)
                 attacked_sentences.append(" ".join(new_sent))
         return attacked_sentences
-
-
-if __name__ == "__main__":
-    train_lime_scores = load_obj(
-        "/content/drive/My Drive/ucl-msc/dissertation/checkpoints/train_lime_scores"
-    )
-    mis = Misinformer(train_lime_scores)
-    fake_test = [("The quick brown fox jumps", 1), ("Hello world dot com", 2)]
-    mis.attack(
-        model=None,
-        surrogate_model=None,
-        test_set=fake_test,
-        embedding=None,
-        tokenizer=None,
-    )
