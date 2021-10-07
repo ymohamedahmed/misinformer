@@ -11,5 +11,5 @@ Abstract: Misinformation has been a permanent feature of the internet since its 
     └── README.md
 
 <p align="center">
-  <img src="./misinformer-example.png" />
+  <img src="misinformer-example.svg" />
 </p>
